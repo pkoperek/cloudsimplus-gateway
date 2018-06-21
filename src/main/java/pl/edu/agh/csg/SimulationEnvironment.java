@@ -297,7 +297,7 @@ public class SimulationEnvironment {
     }
 
     private void waitForStepFinish() {
-        while (!cloudSim.isPaused()) {
+        while (!cloudSim.isPaused() && cloudSim.isRunning()) {
             try {
                 logger.debug("Waiting for simulation step to finish");
                 synchronized (simulationSemaphore) {
@@ -365,7 +365,7 @@ public class SimulationEnvironment {
         Set<Cloudlet> cloudlets = this.broker.getCloudletCreatedList();
         int i = 0;
         for (Cloudlet cloudlet : cloudlets) {
-            if(cloudlet.getStatus() == Cloudlet.Status.INSTANTIATED) {
+            if (cloudlet.getStatus() == Cloudlet.Status.INSTANTIATED) {
                 cloudlet.setVm(runningVms.get(i++ % runningVms.size()));
             }
         }
