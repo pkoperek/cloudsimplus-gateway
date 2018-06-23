@@ -65,6 +65,8 @@ public class SimulationEnvironment {
     }
 
     public void reset() throws IOException, InterruptedException {
+        logger.debug("Environment reset requested");
+
         close();
 
         clearMetricsHistory();
@@ -118,7 +120,9 @@ public class SimulationEnvironment {
         if (simulationThread != null) {
             logger.info("Requesting simulation abort...");
             cloudSim.abort();
-            logger.info("Waiting for simulation to end...");
+            // in case the simulation is in paused state
+            cloudSim.resume();
+            logger.info("Waiting for simulation to e0nd...");
             simulationThread.join();
             logger.info("Simulation stopped");
         }
