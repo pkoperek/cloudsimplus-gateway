@@ -65,7 +65,7 @@ public class SimulationEnvironment {
     }
 
     public void reset() throws IOException, InterruptedException {
-        logger.debug("Environment reset requested");
+        logger.debug("Environment reset started");
 
         close();
 
@@ -84,12 +84,14 @@ public class SimulationEnvironment {
             @Override
             public void run() {
                 logger.debug("Starting simulation in a separate thread...");
-                cloudSim.pause(0.0);
+                // pause at 0.1 to allow for processing of initial events
+                cloudSim.pause(0.1);
                 cloudSim.start();
                 logger.debug("CloudSim simulation finished");
             }
         });
         simulationThread.start();
+        logger.debug("Environment reset finished");
     }
 
     private void clearMetricsHistory() {
