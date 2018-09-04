@@ -8,7 +8,16 @@
 
 // Apply the java plugin to add support for Java
 apply plugin: 'java'
+apply plugin: 'application'
 apply plugin: 'idea'
+apply plugin: 'com.bmuschko.docker-java-application'
+
+buildscript {
+    repositories { jcenter() }
+    dependencies {
+        classpath 'com.bmuschko:gradle-docker-plugin:2.2'
+    }
+}
 
 // In this section you declare where to find the dependencies of your project
 repositories {
@@ -36,3 +45,15 @@ dependencies {
     // 'test.useTestNG()' to your build script.
     testCompile 'junit:junit:4.12'
 }
+
+docker {
+    url = 'unix:///var/run/docker.sock'
+    javaApplication {
+        baseImage = 'openjdk:11-jre'
+        maintainer = 'Pawel Koperek "pkoperek@gmail.com""'
+        port = 25333
+        tag = 'cloudsimplus-gateway:latest'
+    }
+}
+
+mainClassName = "pl.edu.agh.csg.Main"
