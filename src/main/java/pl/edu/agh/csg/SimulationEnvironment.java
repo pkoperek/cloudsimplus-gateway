@@ -124,7 +124,7 @@ public class SimulationEnvironment {
             cloudSim.abort();
             // in case the simulation is in paused state
             cloudSim.resume();
-            logger.info("Waiting for simulation to e0nd...");
+            logger.info("Waiting for simulation to end...");
             simulationThread.join();
             logger.info("Simulation stopped");
         }
@@ -334,21 +334,27 @@ public class SimulationEnvironment {
             case 2:
                 // removing randomly one of the vms
                 int upperBound = broker.getVmExecList().size();
-                int vmIdToKill = random.nextInt(upperBound);
-                Vm toDestroy = null;
-                for (Vm vm : broker.getVmExecList()) {
-                    if (vm.getId() == vmIdToKill) {
-                        toDestroy = vm;
+
+                if(upperBound != 0) {
+                    int vmIdToKill = random.nextInt(upperBound);
+                    Vm toDestroy = null;
+                    for (Vm vm : broker.getVmExecList()) {
+                        if (vm.getId() == vmIdToKill) {
+                            toDestroy = vm;
+                        }
                     }
-                }
-                if (toDestroy != null) {
-                    toDestroy.getHost().destroyVm(toDestroy);
+                    if (toDestroy != null) {
+                        toDestroy.getHost().destroyVm(toDestroy);
 
-                    broker.getVmExecList().remove(toDestroy);
-                    cloudSim.send(broker, datacenter, 0, CloudSimTags.VM_DESTROY, toDestroy);
+                        broker.getVmExecList().remove(toDestroy);
+                        cloudSim.send(broker, datacenter, 0, CloudSimTags.VM_DESTROY, toDestroy);
 
-                    logger.debug("Killing VM: " + toDestroy.getId() + " " + toDestroy.getStopTime() + " " + toDestroy.isWorking() + " ");
+                        logger.debug("Killing VM: " + toDestroy.getId() + " " + toDestroy.getStopTime() + " " + toDestroy.isWorking() + " ");
+                    }
+                } else {
+                    logger.debug("Can't kill a VM - none running");
                 }
+
                 break;
 
         }
