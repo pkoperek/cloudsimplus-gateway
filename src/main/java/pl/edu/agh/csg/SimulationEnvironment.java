@@ -363,10 +363,7 @@ public class SimulationEnvironment {
 
         }
 
-        for (
-                Vm vm : vmExecList)
-
-        {
+        for (Vm vm : broker.getVmExecList()) {
             logger.debug("VM is working: " + vm.getId() + " " + vm.isWorking() + " " + vm.getCpuPercentUsage() + " " + vm.getProcessor());
         }
 
