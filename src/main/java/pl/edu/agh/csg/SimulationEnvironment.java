@@ -322,6 +322,7 @@ public class SimulationEnvironment {
 
     private void executeAction(int action) {
         logger.debug("Executing action: " + action);
+
         switch (action) {
             case 0:
                 // nothing happens
@@ -333,23 +334,26 @@ public class SimulationEnvironment {
                 break;
             case 2:
                 // removing randomly one of the vms
-                int upperBound = broker.getVmExecList().size();
+                List<Vm> vmExecList = broker.getVmExecList();
+                int upperBound = vmExecList.size();
 
-                if(upperBound != 0) {
+                if (upperBound != 0) {
                     int vmIdToKill = random.nextInt(upperBound);
                     Vm toDestroy = null;
-                    for (Vm vm : broker.getVmExecList()) {
-                        if (vm.getId() == vmIdToKill) {
-                            toDestroy = vm;
+                    for (int i = 0; i < vmExecList.size(); i++) {
+                        if (i == vmIdToKill) {
+                            toDestroy = vmExecList.get(i);
                         }
                     }
                     if (toDestroy != null) {
                         toDestroy.getHost().destroyVm(toDestroy);
 
-                        broker.getVmExecList().remove(toDestroy);
+                        vmExecList.remove(toDestroy);
                         cloudSim.send(broker, datacenter, 0, CloudSimTags.VM_DESTROY, toDestroy);
 
                         logger.debug("Killing VM: " + toDestroy.getId() + " " + toDestroy.getStopTime() + " " + toDestroy.isWorking() + " ");
+                    } else {
+                        logger.debug("Can't kill a VM: toDestroy is NULL");
                     }
                 } else {
                     logger.debug("Can't kill a VM - none running");
@@ -359,9 +363,13 @@ public class SimulationEnvironment {
 
         }
 
-        for (Vm vm : broker.getVmExecList()) {
+        for (
+                Vm vm : vmExecList)
+
+        {
             logger.debug("VM is working: " + vm.getId() + " " + vm.isWorking() + " " + vm.getCpuPercentUsage() + " " + vm.getProcessor());
         }
+
     }
 
     private CloudSim createSimulation() throws IOException {
