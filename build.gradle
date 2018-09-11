@@ -52,7 +52,7 @@ docker {
         baseImage = 'openjdk:11-jre'
         maintainer = 'Pawel Koperek "pkoperek@gmail.com""'
         port = 25333
-        tag = 'cloudsimplusgateway:latest'
+        tag = 'pkoperek/cloudsimplus-gateway:0.1'
     }
 }
 
