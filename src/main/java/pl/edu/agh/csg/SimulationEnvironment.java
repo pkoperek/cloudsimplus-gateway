@@ -230,6 +230,9 @@ public class SimulationEnvironment {
                 p90CPUUtilizationHistory.get(p90CPUUtilizationHistory.size() - 1)
         };
         double reward = calculateReward();
+
+        logger.debug("Step finished (action: " + action +")");
+
         return new SimulationStepResult(
                 done,
                 observation,
