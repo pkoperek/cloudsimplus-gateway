@@ -157,7 +157,7 @@ public class SimulationEnvironment {
     private List<Cloudlet> loadJobs() throws IOException {
         String testFile = System.getenv("TEST_FILE");
         if(testFile == null) {
-            testFile = "NASA-iPSC-1993-3.1-cln.swf";
+            testFile = "KTH-SP2-1996-2.1-cln.swf";
         }
         WorkloadFileReader reader = WorkloadFileReader.getInstance(testFile, 10000);
         List<Cloudlet> cloudlets = reader.generateWorkload();
