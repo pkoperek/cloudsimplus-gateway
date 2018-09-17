@@ -341,7 +341,7 @@ public class WorkloadFileReader implements WorkloadReader {
             final int runTime,
             final int numProc,
             final double submissionDelay) {
-        final int len = runTime * mips;
+        final long len = runTime * (long) mips;
         final UtilizationModel utilizationModel = new UtilizationModelFull();
         Cloudlet cloudlet = new CloudletSimple(id, len, numProc)
                 .setFileSize(DataCloudTags.DEFAULT_MTU)
