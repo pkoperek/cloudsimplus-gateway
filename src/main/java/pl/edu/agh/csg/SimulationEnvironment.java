@@ -27,6 +27,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.stream.DoubleStream;
 
 public class SimulationEnvironment {
 
@@ -56,9 +57,11 @@ public class SimulationEnvironment {
     private CircularFifoQueue<Double> p90LatencyHistory = new CircularFifoQueue<>(HISTORY_LENGTH);
     private CircularFifoQueue<Double> avgCPUUtilizationHistory = new CircularFifoQueue<>(HISTORY_LENGTH);
     private CircularFifoQueue<Double> p90CPUUtilizationHistory = new CircularFifoQueue<>(HISTORY_LENGTH);
+    private CircularFifoQueue<Double> totalLatencyHistory = new CircularFifoQueue<>(HISTORY_LENGTH);
     private Double[] doubles = new Double[0];
     private int nextVmId = 0;
     private List<Cloudlet> jobs = new LinkedList<>();
+    private double queueWaitPenalty = 0.001;
 
     public SimulationEnvironment() throws IOException, InterruptedException {
         reset();
@@ -68,9 +71,9 @@ public class SimulationEnvironment {
         logger.debug("Environment reset started");
 
         close();
-
         clearMetricsHistory();
 
+        queueWaitPenalty = Double.parseDouble(withDefault("QUEUE_WAIT_PENALTY", "0.001"));
         pauseAt = 0.0;
         cloudSim = createSimulation();
         broker = createDatacenterBroker();
@@ -94,18 +97,30 @@ public class SimulationEnvironment {
         logger.debug("Environment reset finished");
     }
 
+    private String withDefault(String parameterName, String defaultValue) {
+        String envVariableValue = System.getenv(parameterName);
+
+        if (envVariableValue != null) {
+            return envVariableValue;
+        }
+
+        return defaultValue;
+    }
+
     private void clearMetricsHistory() {
         this.vmCountHistory.clear();
         this.p90CPUUtilizationHistory.clear();
         this.p99LatencyHistory.clear();
         this.p90LatencyHistory.clear();
         this.avgCPUUtilizationHistory.clear();
+        this.totalLatencyHistory.clear();
 
         fillWithZeros(this.vmCountHistory);
         fillWithZeros(this.p90CPUUtilizationHistory);
         fillWithZeros(this.p90LatencyHistory);
         fillWithZeros(this.p99LatencyHistory);
         fillWithZeros(this.avgCPUUtilizationHistory);
+        fillWithZeros(this.totalLatencyHistory);
     }
 
     private void fillWithZeros(Queue<Double> queue) {
@@ -155,10 +170,7 @@ public class SimulationEnvironment {
     }
 
     private List<Cloudlet> loadJobs() throws IOException {
-        String testFile = System.getenv("TEST_FILE");
-        if(testFile == null) {
-            testFile = "KTH-SP2-1996-2.1-cln_50.swf";
-        }
+        String testFile = withDefault("TEST_FILE", "KTH-SP2-1996-2.1-cln_50.swf");
         WorkloadFileReader reader = WorkloadFileReader.getInstance(testFile, 10000);
         List<Cloudlet> cloudlets = reader.generateWorkload();
 
@@ -210,7 +222,8 @@ public class SimulationEnvironment {
                 asPrimitives(this.p99LatencyHistory),
                 asPrimitives(this.p90LatencyHistory),
                 asPrimitives(this.avgCPUUtilizationHistory),
-                asPrimitives(this.p90CPUUtilizationHistory)
+                asPrimitives(this.p90CPUUtilizationHistory),
+                asPrimitives(this.totalLatencyHistory)
         };
     }
 
@@ -231,11 +244,12 @@ public class SimulationEnvironment {
                 p99LatencyHistory.get(p99LatencyHistory.size() - 1),
                 p90LatencyHistory.get(p90LatencyHistory.size() - 1),
                 avgCPUUtilizationHistory.get(avgCPUUtilizationHistory.size() - 1),
-                p90CPUUtilizationHistory.get(p90CPUUtilizationHistory.size() - 1)
+                p90CPUUtilizationHistory.get(p90CPUUtilizationHistory.size() - 1),
+                totalLatencyHistory.get(totalLatencyHistory.size() - 1)
         };
         double reward = calculateReward();
 
-        logger.debug("Step finished (action: " + action +")");
+        logger.debug("Step finished (action: " + action + ")");
 
         return new SimulationStepResult(
                 done,
@@ -246,7 +260,9 @@ public class SimulationEnvironment {
 
     private double calculateReward() {
         // 1.0 stands for the amount of time of a step
-        return -broker.getVmExecList().size() * VM_RUNNING_COST * 1.0;
+        return -broker.getVmExecList().size() * VM_RUNNING_COST * 1.0
+                // this is the penalty we add for queue wait times
+                - totalLatencyHistory.get(totalLatencyHistory.size() - 1) * this.queueWaitPenalty;
     }
 
     private void collectMetrics() {
@@ -280,6 +296,7 @@ public class SimulationEnvironment {
 
         avgCPUUtilizationHistory.add(StatUtils.mean(cpuPercentUsage));
         p90CPUUtilizationHistory.add(percentile(cpuPercentUsage, 0.90));
+        totalLatencyHistory.add(DoubleStream.of(sortedWaitingTimes).sum());
     }
 
     private double percentile(double[] data, double percentile) {
