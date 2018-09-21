@@ -62,8 +62,14 @@ public class SimulationEnvironment {
     private int nextVmId = 0;
     private List<Cloudlet> jobs = new LinkedList<>();
     private double queueWaitPenalty = 0.001;
+    private final String testFile;
 
     public SimulationEnvironment() throws IOException, InterruptedException {
+        this(null);
+    }
+
+    public SimulationEnvironment(String testFile) throws IOException, InterruptedException {
+        this.testFile = testFile != null ? testFile : withDefault("TEST_FILE", "KTH-SP2-1996-2.1-cln_50.swf");
         reset();
     }
 
@@ -170,7 +176,6 @@ public class SimulationEnvironment {
     }
 
     private List<Cloudlet> loadJobs() throws IOException {
-        String testFile = withDefault("TEST_FILE", "KTH-SP2-1996-2.1-cln_50.swf");
         WorkloadFileReader reader = WorkloadFileReader.getInstance(testFile, 10000);
         List<Cloudlet> cloudlets = reader.generateWorkload();
 
@@ -413,8 +418,8 @@ public class SimulationEnvironment {
 
         if (pauseAt <= eventInfo.getTime()) {
             logger.debug("onClockTickListener(): pausing: " + pauseAt + " <= " + eventInfo.getTime());
-            cloudSim.pause();
             synchronized (simulationSemaphore) {
+                cloudSim.pause();
                 simulationSemaphore.notifyAll();
             }
         }
