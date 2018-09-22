@@ -1,5 +1,6 @@
 package pl.edu.agh.csg;
 
+import com.google.gson.Gson;
 import org.apache.commons.collections4.queue.CircularFifoQueue;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.math3.stat.StatUtils;
@@ -63,6 +64,7 @@ public class SimulationEnvironment {
     private double queueWaitPenalty = 0.00001;
     private final String testFile;
     private double until = 0.01;
+    private Gson gson = new Gson();
 
     public SimulationEnvironment() throws IOException, InterruptedException {
         this(null);
@@ -215,8 +217,8 @@ public class SimulationEnvironment {
         return new DatacenterSimple(cloudSim, hostList, new VmAllocationPolicySimple());
     }
 
-    public double[][] render() {
-        return new double[][]{
+    public String render() {
+        double[][] renderedEnv = {
                 asPrimitives(this.vmCountHistory),
                 asPrimitives(this.p99LatencyHistory),
                 asPrimitives(this.p90LatencyHistory),
@@ -224,6 +226,7 @@ public class SimulationEnvironment {
                 asPrimitives(this.p90CPUUtilizationHistory),
                 asPrimitives(this.totalLatencyHistory)
         };
+        return gson.toJson(renderedEnv);
     }
 
     private double[] asPrimitives(Queue<Double> queue) {
