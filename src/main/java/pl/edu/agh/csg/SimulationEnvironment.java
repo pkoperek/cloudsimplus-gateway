@@ -34,24 +34,23 @@ public class SimulationEnvironment {
     private static final int HISTORY_LENGTH = 30 * 60; // 30 minutes * 60s
     private static final Logger logger = LoggerFactory.getLogger(SimulationEnvironment.class.getName());
 
-    private static final long HOST_RAM = 16 * 1024;
-    private static final long HOST_BW = 50000;
-    private static final long HOST_SIZE = 2000;
-    private static final long HOST_PE_MIPS = 10000;
-    private static final long HOST_PE_CNT = 4;
-    private static final double VM_RUNNING_COST = 1.0;
+    private static final double TIME_QUANT = 1.0;
+
+    private double vmRunningHourlyCost = 0.2;
+    private long hostRam = 16 * 1024;
+    private long hostBw = 50000;
+    private long hostSize = 2000;
+    private long hostPeMips = 10000;
+    private long hostPeCnt = 4;
 
     private static final int INITIAL_VM_COUNT = 10;
-    private static final int DATACENTER_HOSTS = 100;
+    private static final int DATACENTER_HOSTS = 1000;
 
     private Random random = new Random(System.currentTimeMillis());
 
     private CloudSim cloudSim = null;
     private DatacenterBroker broker = null;
     private Datacenter datacenter = null;
-    private Thread simulationThread = null;
-    private double pauseAt;
-    private Object simulationSemaphore = new Object();
     private CircularFifoQueue<Double> vmCountHistory = new CircularFifoQueue<>(HISTORY_LENGTH);
     private CircularFifoQueue<Double> p99LatencyHistory = new CircularFifoQueue<>(HISTORY_LENGTH);
     private CircularFifoQueue<Double> p90LatencyHistory = new CircularFifoQueue<>(HISTORY_LENGTH);
@@ -61,8 +60,9 @@ public class SimulationEnvironment {
     private Double[] doubles = new Double[0];
     private int nextVmId = 0;
     private List<Cloudlet> jobs = new LinkedList<>();
-    private double queueWaitPenalty = 0.001;
+    private double queueWaitPenalty = 0.00001;
     private final String testFile;
+    private double until = 0.01;
 
     public SimulationEnvironment() throws IOException, InterruptedException {
         this(null);
@@ -79,8 +79,14 @@ public class SimulationEnvironment {
         close();
         clearMetricsHistory();
 
-        queueWaitPenalty = Double.parseDouble(withDefault("QUEUE_WAIT_PENALTY", "0.001"));
-        pauseAt = 0.0;
+        vmRunningHourlyCost = Double.parseDouble(withDefault("VM_RUNNING_HOURLY_COST", "0.2"));
+        hostPeMips = Long.parseLong(withDefault("HOST_PE_MIPS", "10000"));
+        hostBw = Long.parseLong(withDefault("HOST_BW", "50000"));
+        hostRam = Long.parseLong(withDefault("HOST_RAM", "16384"));
+        hostSize = Long.parseLong(withDefault("HOST_SIZE", "2000"));
+        hostPeCnt = Long.parseLong(withDefault("HOST_PE_CNT", "4"));
+
+        queueWaitPenalty = Double.parseDouble(withDefault("QUEUE_WAIT_PENALTY", "0.00001"));
         cloudSim = createSimulation();
         broker = createDatacenterBroker();
         datacenter = createDatacenter();
@@ -89,17 +95,12 @@ public class SimulationEnvironment {
         jobs = loadJobs();
         broker.submitCloudletList(jobs);
 
-        simulationThread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                logger.debug("Starting simulation in a separate thread...");
-                // pause at 0.1 to allow for processing of initial events
-                cloudSim.pause(0.1);
-                cloudSim.start();
-                logger.debug("CloudSim simulation finished");
-            }
-        });
-        simulationThread.start();
+        // let simulation setup stuff
+        // start has to be AFTER loading jobs
+        cloudSim.start();
+        cloudSim.runStep(0.01);
+        until = TIME_QUANT;
+
         logger.debug("Environment reset finished");
     }
 
@@ -140,15 +141,7 @@ public class SimulationEnvironment {
     }
 
     public void close() throws InterruptedException {
-        if (simulationThread != null) {
-            logger.info("Requesting simulation abort...");
-            cloudSim.abort();
-            // in case the simulation is in paused state
-            cloudSim.resume();
-            logger.info("Waiting for simulation to end...");
-            simulationThread.join();
-            logger.info("Simulation stopped");
-        }
+        logger.info("Simulation is synchronous - doing nothing");
     }
 
     private DatacenterBrokerSimple createDatacenterBroker() {
@@ -168,15 +161,16 @@ public class SimulationEnvironment {
     }
 
     private Vm createVmWithId() {
-        Vm vm = new VmSimple(this.nextVmId, HOST_PE_MIPS, HOST_PE_CNT);
+        Vm vm = new VmSimple(this.nextVmId, hostPeMips, hostPeCnt);
         this.nextVmId++;
-        vm.setRam(HOST_RAM).setBw(HOST_BW).setSize(HOST_SIZE)
+        vm.setRam(hostRam).setBw(hostBw).setSize(hostSize)
                 .setCloudletScheduler(new CloudletSchedulerSpaceShared());
         return vm;
     }
 
     private List<Cloudlet> loadJobs() throws IOException {
-        WorkloadFileReader reader = WorkloadFileReader.getInstance(testFile, 10000);
+        int mips = Integer.parseInt(withDefault("INPUT_MIPS", "120"));
+        WorkloadFileReader reader = WorkloadFileReader.getInstance(testFile, mips);
         List<Cloudlet> cloudlets = reader.generateWorkload();
 
         Collections.sort(cloudlets, new Comparator<Cloudlet>() {
@@ -207,10 +201,10 @@ public class SimulationEnvironment {
         List<Host> hostList = new ArrayList<>();
 
         for (int i = 0; i < DATACENTER_HOSTS; i++) {
-            List<Pe> peList = createPeList(HOST_PE_CNT, HOST_PE_MIPS);
+            List<Pe> peList = createPeList(hostPeCnt, hostPeMips);
 
             Host host =
-                    new HostSimple(HOST_RAM, HOST_BW, HOST_SIZE, peList)
+                    new HostSimple(hostRam, hostBw, hostSize, peList)
                             .setRamProvisioner(new ResourceProvisionerSimple())
                             .setBwProvisioner(new ResourceProvisionerSimple())
                             .setVmScheduler(new VmSchedulerTimeShared());
@@ -238,8 +232,9 @@ public class SimulationEnvironment {
 
     public SimulationStepResult step(int action) {
         executeAction(action);
-        unlockEnvironment();
-        waitForStepFinish();
+
+        cloudSim.runStep(until);
+        until += TIME_QUANT;
 
         collectMetrics();
 
@@ -264,8 +259,8 @@ public class SimulationEnvironment {
     }
 
     private double calculateReward() {
-        // 1.0 stands for the amount of time of a step
-        return -broker.getVmExecList().size() * VM_RUNNING_COST * 1.0
+        // 0.00028 = 1/3600 - scale hourly cost to cost per second
+        return -broker.getVmExecList().size() * vmRunningHourlyCost * 0.00028
                 // this is the penalty we add for queue wait times
                 - totalLatencyHistory.get(totalLatencyHistory.size() - 1) * this.queueWaitPenalty;
     }
@@ -329,24 +324,6 @@ public class SimulationEnvironment {
             retVal = data[roundedIndex];
         }
         return retVal;
-    }
-
-    private void waitForStepFinish() {
-        while (!cloudSim.isPaused() && cloudSim.isRunning()) {
-            try {
-                logger.debug("Waiting for simulation step to finish");
-                synchronized (simulationSemaphore) {
-                    simulationSemaphore.wait(100);
-                }
-            } catch (InterruptedException e) {
-            }
-        }
-    }
-
-    private void unlockEnvironment() {
-        pauseAt += 1.0;
-        logger.debug("step() - resuming operation at tick: " + cloudSim.clock() + " will pause at: " + pauseAt);
-        cloudSim.resume();
     }
 
     private void executeAction(int action) {
@@ -415,14 +392,6 @@ public class SimulationEnvironment {
                 cloudlet.setVm(runningVms.get(i++ % runningVms.size()));
             }
         }
-
-        if (pauseAt <= eventInfo.getTime()) {
-            logger.debug("onClockTickListener(): pausing: " + pauseAt + " <= " + eventInfo.getTime());
-            synchronized (simulationSemaphore) {
-                cloudSim.pause();
-                simulationSemaphore.notifyAll();
-            }
-        }
     }
 
     public long ping() {
@@ -441,4 +410,3 @@ public class SimulationEnvironment {
     }
 
 }
-
