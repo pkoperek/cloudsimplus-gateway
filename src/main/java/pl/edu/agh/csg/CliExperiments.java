@@ -20,10 +20,10 @@ class CliExperiments {
                 totalReward += stepResult.getReward();
 
                 final long start = System.nanoTime();
-                double[][] env = simulationEnvironment.render();
+                String env = simulationEnvironment.render();
                 final long stop = System.nanoTime();
                 System.out.println("Render time: " + ((stop - start) / 1000000000.0) + "s");
-                System.out.println("Render size: " + env.length + " x " + env[0].length);
+                System.out.println("Render size: " + env.length());
 
                 System.out.println("Observations: " + Arrays.toString(stepResult.getObs()) + " reward: " + stepResult.getReward());
                 if (stepResult.isDone()) {
