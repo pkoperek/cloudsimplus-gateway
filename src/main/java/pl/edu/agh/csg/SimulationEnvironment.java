@@ -297,9 +297,21 @@ public class SimulationEnvironment {
         }
         Arrays.sort(cpuPercentUsage);
 
-        avgCPUUtilizationHistory.add(StatUtils.mean(cpuPercentUsage));
+        avgCPUUtilizationHistory.add(safeMean(cpuPercentUsage));
         p90CPUUtilizationHistory.add(percentile(cpuPercentUsage, 0.90));
         totalLatencyHistory.add(DoubleStream.of(sortedWaitingTimes).sum());
+    }
+
+    private double safeMean(double[] cpuPercentUsage) {
+        if(cpuPercentUsage.length == 0) {
+            return 0.0;
+        }
+
+        if(cpuPercentUsage.length == 1) {
+            return cpuPercentUsage[0];
+        }
+
+        return StatUtils.mean(cpuPercentUsage);
     }
 
     private double percentile(double[] data, double percentile) {
