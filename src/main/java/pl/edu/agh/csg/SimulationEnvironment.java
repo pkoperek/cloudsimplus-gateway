@@ -388,11 +388,14 @@ public class SimulationEnvironment {
         logger.debug("onClockTickListener(): Clock tick detected: " + eventInfo.getTime());
 
         List<Vm> runningVms = this.broker.getVmExecList();
-        Set<Cloudlet> cloudlets = this.broker.getCloudletCreatedList();
-        int i = 0;
-        for (Cloudlet cloudlet : cloudlets) {
-            if (cloudlet.getStatus() == Cloudlet.Status.INSTANTIATED) {
-                cloudlet.setVm(runningVms.get(i++ % runningVms.size()));
+        if(runningVms.size() > 0) {
+            Set<Cloudlet> cloudlets = this.broker.getCloudletCreatedList();
+
+            int i = 0;
+            for (Cloudlet cloudlet : cloudlets) {
+                if (cloudlet.getStatus() == Cloudlet.Status.INSTANTIATED) {
+                    cloudlet.setVm(runningVms.get(i++ % runningVms.size()));
+                }
             }
         }
     }
