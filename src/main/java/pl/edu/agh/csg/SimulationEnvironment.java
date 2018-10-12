@@ -28,6 +28,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.DoubleStream;
 
 public class SimulationEnvironment {
@@ -44,7 +45,7 @@ public class SimulationEnvironment {
     private long hostPeMips = 10000;
     private long hostPeCnt = 4;
 
-    private static final int INITIAL_VM_COUNT = 10;
+    private static final int INITIAL_VM_COUNT = 25;
     private static final int DATACENTER_HOSTS = 1000;
 
     private Random random = new Random(System.currentTimeMillis());
@@ -65,6 +66,7 @@ public class SimulationEnvironment {
     private final String testFile;
     private double until = 0.01;
     private Gson gson = new Gson();
+    private Map<Cloudlet, Double> originalSubmissionDelay = new HashMap<>();
 
     public SimulationEnvironment() throws IOException, InterruptedException {
         this(null);
@@ -95,6 +97,9 @@ public class SimulationEnvironment {
         broker.submitVmList(createVmList());
 
         jobs = loadJobs();
+
+        jobs.stream().forEach(j -> originalSubmissionDelay.put(j, j.getSubmissionDelay()));
+
         broker.submitCloudletList(jobs);
 
         // let simulation setup stuff
@@ -172,7 +177,7 @@ public class SimulationEnvironment {
 
     private List<Cloudlet> loadJobs() throws IOException {
         int mips = Integer.parseInt(withDefault("INPUT_MIPS", "120"));
-        WorkloadFileReader reader = WorkloadFileReader.getInstance(testFile, mips);
+        WorkloadFileReader reader = WorkloadFileReader.getInstance(testFile, mips, hostPeCnt);
         List<Cloudlet> cloudlets = reader.generateWorkload();
 
         Collections.sort(cloudlets, new Comparator<Cloudlet>() {
@@ -303,11 +308,11 @@ public class SimulationEnvironment {
     }
 
     private double safeMean(double[] cpuPercentUsage) {
-        if(cpuPercentUsage.length == 0) {
+        if (cpuPercentUsage.length == 0) {
             return 0.0;
         }
 
-        if(cpuPercentUsage.length == 1) {
+        if (cpuPercentUsage.length == 1) {
             return cpuPercentUsage[0];
         }
 
@@ -358,7 +363,7 @@ public class SimulationEnvironment {
                 List<Vm> vmExecList = broker.getVmExecList();
                 int upperBound = vmExecList.size();
 
-                if (upperBound != 0) {
+                if (upperBound > 1) {
                     int vmIdToKill = random.nextInt(upperBound);
                     Vm toDestroy = null;
                     for (int i = 0; i < vmExecList.size(); i++) {
@@ -372,16 +377,40 @@ public class SimulationEnvironment {
                         vmExecList.remove(toDestroy);
                         cloudSim.send(broker, datacenter, 0, CloudSimTags.VM_DESTROY, toDestroy);
 
+                        Vm finalToDestroy = toDestroy;
+                        List<Cloudlet> toReschedule = jobs.stream()
+                                .filter(j -> j.getVm() == finalToDestroy)
+                                .filter(j -> j.getStatus() != Cloudlet.Status.SUCCESS)
+                                .collect(Collectors.toList());
+
+                        logger.debug("Killing VM: to reschedule cloudlets: " + toReschedule.size());
+
+                        toReschedule.forEach(j -> {
+                            double submissionDelay = originalSubmissionDelay.getOrDefault(j, 0.0);
+                            submissionDelay -= cloudSim.clock();
+
+                            if(submissionDelay < 1.0) {
+                                submissionDelay = 1.0;
+                            }
+
+                            j.setSubmissionDelay(submissionDelay);
+
+                            j.setStatus(Cloudlet.Status.INSTANTIATED);
+                            j.setVm(Vm.NULL);
+                            j.setBroker(DatacenterBroker.NULL);
+                        });
+
+                        broker.submitCloudletList(toReschedule);
+
                         logger.debug("Killing VM: " + toDestroy.getId() + " " + toDestroy.getStopTime() + " " + toDestroy.isWorking() + " ");
                     } else {
                         logger.debug("Can't kill a VM: toDestroy is NULL");
                     }
                 } else {
-                    logger.debug("Can't kill a VM - none running");
+                    logger.debug("Can't kill a VM - only one running");
                 }
 
                 break;
-
         }
 
         for (Vm vm : broker.getVmExecList()) {
@@ -400,7 +429,7 @@ public class SimulationEnvironment {
         logger.debug("onClockTickListener(): Clock tick detected: " + eventInfo.getTime());
 
         List<Vm> runningVms = this.broker.getVmExecList();
-        if(runningVms.size() > 0) {
+        if (runningVms.size() > 0) {
             Set<Cloudlet> cloudlets = this.broker.getCloudletCreatedList();
 
             int i = 0;
@@ -427,4 +456,7 @@ public class SimulationEnvironment {
         return peList;
     }
 
+    public List<Cloudlet> getJobs() {
+        return jobs;
+    }
 }

@@ -17,8 +17,10 @@ import org.cloudbus.cloudsim.utilizationmodels.UtilizationModelFull;
 
 import java.io.*;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.ZipInputStream;
 
@@ -131,24 +133,7 @@ public class WorkloadFileReader implements WorkloadReader {
 
     private Predicate<Cloudlet> predicate;
 
-    /**
-     * Create a new WorkloadFileReader object.
-     *
-     * @param filePath the workload trace file path in one of the following formats: <i>ASCII text, zip, gz.</i>
-     * @param mips     the MIPS capacity of the PEs from the VM where each created Cloudlet is supposed to run.
-     *                 Considering the workload reader provides the run time for each
-     *                 application registered inside the reader, the MIPS value will be used
-     *                 to compute the {@link Cloudlet#getLength() length of the Cloudlet (in MI)}
-     *                 so that it's expected to execute, inside the VM with the given MIPS capacity,
-     *                 for the same time as specified into the workload reader.
-     * @throws FileNotFoundException
-     * @throws IllegalArgumentException when the workload trace file name is null or empty; or the resource PE mips <= 0
-     * @pre mips > 0
-     * @see #getInstance(String, int)
-     */
-    public WorkloadFileReader(final String filePath, final int mips) throws FileNotFoundException {
-        this(filePath, new FileInputStream(filePath), mips);
-    }
+    private long jobPeSplitThreshold = 4;
 
     /**
      * Create a new WorkloadFileReader object.
@@ -166,7 +151,7 @@ public class WorkloadFileReader implements WorkloadReader {
      * @pre mips > 0
      * @see #getInstance(String, int)
      */
-    private WorkloadFileReader(final String filePath, final InputStream reader, final int mips) {
+    private WorkloadFileReader(final String filePath, final InputStream reader, final int mips, final long jobPeSplitThreshold) {
         if (filePath == null || filePath.isEmpty()) {
             throw new IllegalArgumentException("Invalid trace reader name.");
         }
@@ -182,6 +167,7 @@ public class WorkloadFileReader implements WorkloadReader {
 
         this.cloudlets = new ArrayList<>();
         this.maxLinesToRead = -1;
+        this.jobPeSplitThreshold = jobPeSplitThreshold;
     }
 
     /**
@@ -201,9 +187,9 @@ public class WorkloadFileReader implements WorkloadReader {
      * @pre mips > 0
      * @post $none
      */
-    public static WorkloadFileReader getInstance(final String fileName, final int mips) {
+    public static WorkloadFileReader getInstance(final String fileName, final int mips, long jobPeSplitThreshold) {
         final InputStream reader = ResourceLoader.getInputStream(WorkloadFileReader.class, fileName);
-        return new WorkloadFileReader(fileName, reader, mips);
+        return new WorkloadFileReader(fileName, reader, mips, jobPeSplitThreshold);
     }
 
     @Override
@@ -339,7 +325,7 @@ public class WorkloadFileReader implements WorkloadReader {
     private Cloudlet createCloudlet(
             final int id,
             final int runTime,
-            final int numProc,
+            final long numProc,
             final double submissionDelay) {
         final long len = runTime * (long) mips;
         final UtilizationModel utilizationModel = new UtilizationModelFull();
@@ -359,17 +345,8 @@ public class WorkloadFileReader implements WorkloadReader {
      * @param array the array of fields generated from a line of the trace reader.
      * @return the created Cloudlet
      */
-    private Cloudlet createCloudletFromTraceLine(final String[] array) {
+    private List<Cloudlet> createCloudletFromTraceLine(final String[] array) {
         Integer obj;
-
-        // get the job number
-        int id;
-        if (jobNum == IRRELEVANT) {
-            id = cloudlets.size() + 1;
-        } else {
-            obj = Integer.valueOf(array[jobNum].trim());
-            id = obj;
-        }
 
         // get the submit time
         final Long l = Long.valueOf(array[submitTime].trim());
@@ -403,7 +380,20 @@ public class WorkloadFileReader implements WorkloadReader {
             numProc = 1;
         }
 
-        return createCloudlet(id, runTime, numProc, submitTime / 1000.0);
+        // get the job number
+        int beginningId = cloudlets.size() + 1;
+
+        List<Cloudlet> cloudlets = new ArrayList<>();
+        int remainingPEs = numProc;
+        int id = beginningId;
+
+        while(remainingPEs > this.jobPeSplitThreshold) {
+            cloudlets.add(createCloudlet(id++, runTime, this.jobPeSplitThreshold, submitTime / 1000.0));
+            remainingPEs -= this.jobPeSplitThreshold;
+        }
+        cloudlets.add(createCloudlet(id++, runTime, remainingPEs, submitTime / 1000.0));
+
+        return cloudlets;
     }
 
     /**
@@ -419,10 +409,10 @@ public class WorkloadFileReader implements WorkloadReader {
      * was commented.
      * @see #setPredicate(Predicate)
      */
-    private Cloudlet parseTraceLineAndCreateCloudlet(final String line) {
+    private List<Cloudlet> parseTraceLineAndCreateCloudlets(final String line) {
         // skip a comment line
         if (line.startsWith(comment)) {
-            return Cloudlet.NULL;
+            return Arrays.asList(Cloudlet.NULL);
         }
 
         final String[] sp = line.split("\\s+"); // split the fields based on a space
@@ -438,11 +428,12 @@ public class WorkloadFileReader implements WorkloadReader {
 
         //If all the fields could not be read, don't create the Cloudlet.
         if (index < maxField) {
-            return Cloudlet.NULL;
+            return Arrays.asList(Cloudlet.NULL);
         }
 
-        final Cloudlet c = createCloudletFromTraceLine(fieldArray);
-        return predicate.test(c) ? c : Cloudlet.NULL;
+        final List<Cloudlet> c = createCloudletFromTraceLine(fieldArray);
+
+        return c.stream().filter(predicate).collect(Collectors.toList());
     }
 
     /**
@@ -459,9 +450,10 @@ public class WorkloadFileReader implements WorkloadReader {
         int line = 1;
         String readLine;
         while ((readLine = readNextLine(reader, line)) != null) {
-            final Cloudlet c = parseTraceLineAndCreateCloudlet(readLine);
-            if (c != Cloudlet.NULL) {
-                cloudlets.add(c);
+            final List<Cloudlet> readCloudlets = parseTraceLineAndCreateCloudlets(readLine);
+            final List<Cloudlet> nonNullCloudlets = readCloudlets.stream().filter(c -> c != Cloudlet.NULL).collect(Collectors.toList());
+            if (nonNullCloudlets.size() > 0) {
+                cloudlets.addAll(nonNullCloudlets);
                 line++;
             }
         }
