@@ -45,7 +45,7 @@ public class SimulationEnvironment {
     private long hostPeMips = 10000;
     private long hostPeCnt = 4;
 
-    private static final int INITIAL_VM_COUNT = 25;
+    private static final int INITIAL_VM_COUNT = 10;
     private static final int DATACENTER_HOSTS = 1000;
 
     private Random random = new Random(System.currentTimeMillis());
