@@ -45,7 +45,7 @@ public class SimulationEnvironment {
     private long hostPeMips = 10000;
     private long hostPeCnt = 4;
 
-    private static final int INITIAL_VM_COUNT = 10;
+    private int initialVMCount = 10;
     private static final int DATACENTER_HOSTS = 1000;
 
     private Random random = new Random(System.currentTimeMillis());
@@ -66,14 +66,14 @@ public class SimulationEnvironment {
     private final String testFile;
     private double until = 0.01;
     private Gson gson = new Gson();
-    private Map<Cloudlet, Double> originalSubmissionDelay = new HashMap<>();
+    private Map<Integer, Double> originalSubmissionDelay = new HashMap<>();
 
     public SimulationEnvironment() throws IOException, InterruptedException {
         this(null);
     }
 
     public SimulationEnvironment(String testFile) throws IOException, InterruptedException {
-        this.testFile = testFile != null ? testFile : withDefault("TEST_FILE", "KTH-SP2-1996-2.1-cln_50.swf");
+        this.testFile = testFile != null ? testFile : withDefault("TEST_FILE", "KTH-SP2-1996-2.1-cln.swf");
         reset();
     }
 
@@ -89,6 +89,7 @@ public class SimulationEnvironment {
         hostRam = Long.parseLong(withDefault("HOST_RAM", "16384"));
         hostSize = Long.parseLong(withDefault("HOST_SIZE", "2000"));
         hostPeCnt = Long.parseLong(withDefault("HOST_PE_CNT", "4"));
+        initialVMCount = Integer.parseInt(withDefault("INITIAL_VM_COUNT", "500"));
 
         queueWaitPenalty = Double.parseDouble(withDefault("QUEUE_WAIT_PENALTY", "0.00001"));
         cloudSim = createSimulation();
@@ -98,7 +99,7 @@ public class SimulationEnvironment {
 
         jobs = loadJobs();
 
-        jobs.stream().forEach(j -> originalSubmissionDelay.put(j, j.getSubmissionDelay()));
+        jobs.stream().forEach(j -> originalSubmissionDelay.put(j.getId(), j.getSubmissionDelay()));
 
         broker.submitCloudletList(jobs);
 
@@ -158,7 +159,7 @@ public class SimulationEnvironment {
     private List<? extends Vm> createVmList() {
         List<Vm> vmList = new ArrayList<>(1);
 
-        for (int i = 0; i < INITIAL_VM_COUNT; i++) {
+        for (int i = 0; i < initialVMCount; i++) {
             // 1 VM == 1 HOST for simplicity
             Vm vm = createVmWithId();
             vmList.add(vm);
@@ -282,7 +283,10 @@ public class SimulationEnvironment {
         List<Double> waitingTimes = new ArrayList<>();
         for (Cloudlet cloudlet : broker.getCloudletFinishedList()) {
             if (cloudlet.getFinishTime() > cutOffTime) {
-                waitingTimes.add(cloudlet.getWaitingTime());
+                double systemEntryTime = this.originalSubmissionDelay.get(cloudlet.getId());
+                // systemEntryTime should be always less than exec start time
+                double realWaitingTime = cloudlet.getExecStartTime() - systemEntryTime;
+                waitingTimes.add(realWaitingTime);
             }
         }
 
