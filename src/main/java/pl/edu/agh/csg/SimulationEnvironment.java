@@ -89,7 +89,7 @@ public class SimulationEnvironment {
         hostRam = Long.parseLong(withDefault("HOST_RAM", "16384"));
         hostSize = Long.parseLong(withDefault("HOST_SIZE", "2000"));
         hostPeCnt = Long.parseLong(withDefault("HOST_PE_CNT", "4"));
-        initialVMCount = Integer.parseInt(withDefault("INITIAL_VM_COUNT", "500"));
+        initialVMCount = Integer.parseInt(withDefault("INITIAL_VM_COUNT", "10"));
 
         queueWaitPenalty = Double.parseDouble(withDefault("QUEUE_WAIT_PENALTY", "0.00001"));
         cloudSim = createSimulation();
