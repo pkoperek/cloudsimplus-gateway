@@ -13,21 +13,12 @@ import java.util.Arrays;
 class CliExperiments {
     public static void main(String[] args) {
         try {
-            SimulationEnvironment simulationEnvironment = new SimulationEnvironment("KTH-SP2-1996-2.1-cln_250.swf");
+            SimulationEnvironment simulationEnvironment = new SimulationEnvironment("KTH-SP2-1996-2.1-cln.swf");
             simulationEnvironment.reset();
             double totalReward = 0.0;
             double totalWaitTime = 0.0;
-            int iteration = 0;
-            int action = 0;
             while (true) {
-
-                if(iteration % 10 == 3) {
-                    action = 2;
-                } else {
-                    action = 0;
-                }
-
-                SimulationStepResult stepResult = simulationEnvironment.step(action);
+                SimulationStepResult stepResult = simulationEnvironment.step(0);
                 totalReward += stepResult.getReward();
                 totalWaitTime += stepResult.getObs()[5];
 
@@ -42,11 +33,12 @@ class CliExperiments {
                     System.out.println(">>> SIMULATION FINISHED <<<");
                     break;
                 }
-                iteration++;
             }
 
             for(Cloudlet job : simulationEnvironment.getJobs()) {
-                System.out.println("Cloudlet: " + job.getId() + " status: " + job.getStatus() + " required PEs: " + job.getNumberOfPes());
+                if(job.getStatus() != Cloudlet.Status.SUCCESS) {
+                    System.out.println("ERROR: Cloudlet: " + job.getId() + " status: " + job.getStatus() + " required PEs: " + job.getNumberOfPes());
+                }
             }
 
             simulationEnvironment.close();
