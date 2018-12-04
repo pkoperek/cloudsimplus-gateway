@@ -68,13 +68,12 @@ public class SimulationEnvironment {
     private Gson gson = new Gson();
     private Map<Integer, Double> originalSubmissionDelay = new HashMap<>();
 
-    public SimulationEnvironment() throws IOException, InterruptedException {
+    public SimulationEnvironment() {
         this(null);
     }
 
-    public SimulationEnvironment(String testFile) throws IOException, InterruptedException {
+    public SimulationEnvironment(String testFile) {
         this.testFile = testFile != null ? testFile : withDefault("TEST_FILE", "KTH-SP2-1996-2.1-cln.swf");
-        reset();
     }
 
     public void reset() throws IOException, InterruptedException {
@@ -424,7 +423,7 @@ public class SimulationEnvironment {
 
     }
 
-    private CloudSim createSimulation() throws IOException {
+    private CloudSim createSimulation() {
         CloudSim cloudSim = new CloudSim();
         cloudSim.addOnClockTickListener(this::onClockTickListener);
         return cloudSim;
