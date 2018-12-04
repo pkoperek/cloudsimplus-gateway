@@ -20,6 +20,7 @@ import org.cloudbus.cloudsim.resources.Pe;
 import org.cloudbus.cloudsim.resources.PeSimple;
 import org.cloudbus.cloudsim.schedulers.cloudlet.CloudletSchedulerSpaceShared;
 import org.cloudbus.cloudsim.schedulers.vm.VmSchedulerTimeShared;
+import org.cloudbus.cloudsim.util.WorkloadReader;
 import org.cloudbus.cloudsim.vms.Vm;
 import org.cloudbus.cloudsim.vms.VmSimple;
 import org.cloudsimplus.listeners.EventInfo;
@@ -30,6 +31,8 @@ import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.DoubleStream;
+
+import static pl.edu.agh.csg.Defaults.withDefault;
 
 public class SimulationEnvironment {
 
@@ -63,43 +66,30 @@ public class SimulationEnvironment {
     private int nextVmId = 0;
     private List<Cloudlet> jobs = new LinkedList<>();
     private double queueWaitPenalty = 0.00001;
-    private final String testFile;
     private double until = 0.01;
     private Gson gson = new Gson();
     private Map<Integer, Double> originalSubmissionDelay = new HashMap<>();
 
-    public SimulationEnvironment() {
-        this(null);
-    }
-
-    public SimulationEnvironment(String testFile) {
-        this.testFile = testFile != null ? testFile : withDefault("TEST_FILE", "KTH-SP2-1996-2.1-cln.swf");
-    }
-
     public void reset() throws IOException, InterruptedException {
+        reset(null);
+    }
+
+    public void reset(Map<String, String> maybeParameters) throws IOException, InterruptedException {
         logger.debug("Environment reset started");
+
+        Map<String, String> parameters = withDefault(maybeParameters);
 
         close();
         clearMetricsHistory();
+        reReadSettings();
 
-        vmRunningHourlyCost = Double.parseDouble(withDefault("VM_RUNNING_HOURLY_COST", "0.2"));
-        hostPeMips = Long.parseLong(withDefault("HOST_PE_MIPS", "10000"));
-        hostBw = Long.parseLong(withDefault("HOST_BW", "50000"));
-        hostRam = Long.parseLong(withDefault("HOST_RAM", "16384"));
-        hostSize = Long.parseLong(withDefault("HOST_SIZE", "2000"));
-        hostPeCnt = Long.parseLong(withDefault("HOST_PE_CNT", "4"));
-        initialVMCount = Integer.parseInt(withDefault("INITIAL_VM_COUNT", "10"));
-
-        queueWaitPenalty = Double.parseDouble(withDefault("QUEUE_WAIT_PENALTY", "0.00001"));
         cloudSim = createSimulation();
         broker = createDatacenterBroker();
         datacenter = createDatacenter();
         nextVmId = 0;
         broker.submitVmList(createVmList());
 
-        jobs = loadJobs();
-
-        jobs.stream().forEach(j -> originalSubmissionDelay.put(j.getId(), j.getSubmissionDelay()));
+        jobs = loadJobs(parameters);
 
         broker.submitCloudletList(jobs);
 
@@ -112,14 +102,15 @@ public class SimulationEnvironment {
         logger.debug("Environment reset finished");
     }
 
-    private String withDefault(String parameterName, String defaultValue) {
-        String envVariableValue = System.getenv(parameterName);
-
-        if (envVariableValue != null) {
-            return envVariableValue;
-        }
-
-        return defaultValue;
+    private void reReadSettings() {
+        vmRunningHourlyCost = Double.parseDouble(withDefault("VM_RUNNING_HOURLY_COST", "0.2"));
+        hostPeMips = Long.parseLong(withDefault("HOST_PE_MIPS", "10000"));
+        hostBw = Long.parseLong(withDefault("HOST_BW", "50000"));
+        hostRam = Long.parseLong(withDefault("HOST_RAM", "16384"));
+        hostSize = Long.parseLong(withDefault("HOST_SIZE", "2000"));
+        hostPeCnt = Long.parseLong(withDefault("HOST_PE_CNT", "4"));
+        initialVMCount = Integer.parseInt(withDefault("INITIAL_VM_COUNT", "10"));
+        queueWaitPenalty = Double.parseDouble(withDefault("QUEUE_WAIT_PENALTY", "0.00001"));
     }
 
     private void clearMetricsHistory() {
@@ -161,8 +152,7 @@ public class SimulationEnvironment {
 
         for (int i = 0; i < initialVMCount; i++) {
             // 1 VM == 1 HOST for simplicity
-            Vm vm = createVmWithId();
-            vmList.add(vm);
+            vmList.add(createVmWithId());
         }
 
         return vmList;
@@ -176,10 +166,20 @@ public class SimulationEnvironment {
         return vm;
     }
 
-    private List<Cloudlet> loadJobs() throws IOException {
-        int mips = Integer.parseInt(withDefault("INPUT_MIPS", "120"));
-        WorkloadFileReader reader = WorkloadFileReader.getInstance(testFile, mips, hostPeCnt);
-        List<Cloudlet> cloudlets = reader.generateWorkload();
+    private List<Cloudlet> loadJobs(Map<String, String> parameters) throws IOException {
+        WorkloadReader generator;
+        if(parameters.containsKey("start_time")) {
+            Long startTime = Long.valueOf(parameters.get("start_time"));
+            Long endTime = Long.valueOf(parameters.get("end_time"));
+
+            generator = new DatabaseJobReader(startTime, endTime);
+        } else {
+            String testFile = parameters.getOrDefault("test_file", withDefault("TEST_FILE", "KTH-SP2-1996-2.1-cln.swf"));
+            int mips = Integer.parseInt(withDefault("INPUT_MIPS", "120"));
+            generator = WorkloadFileReader.getInstance(testFile, mips, hostPeCnt);
+        }
+
+        List<Cloudlet> cloudlets = generator.generateWorkload();
 
         Collections.sort(cloudlets, new Comparator<Cloudlet>() {
             @Override
@@ -198,6 +198,7 @@ public class SimulationEnvironment {
             }
         });
 
+        cloudlets.stream().forEach(c -> originalSubmissionDelay.put(c.getId(), c.getSubmissionDelay()));
         logger.info("Loaded: " + cloudlets.size() + " jobs");
         for (Cloudlet cloudlet : cloudlets) {
             logger.info("Cloudlet: " + cloudlet.getId() + " " + cloudlet.getSubmissionDelay());
@@ -393,7 +394,7 @@ public class SimulationEnvironment {
                             double submissionDelay = originalSubmissionDelay.getOrDefault(j, 0.0);
                             submissionDelay -= cloudSim.clock();
 
-                            if(submissionDelay < 1.0) {
+                            if (submissionDelay < 1.0) {
                                 submissionDelay = 1.0;
                             }
 
