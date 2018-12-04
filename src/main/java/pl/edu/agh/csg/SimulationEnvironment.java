@@ -95,6 +95,7 @@ public class SimulationEnvironment {
         cloudSim = createSimulation();
         broker = createDatacenterBroker();
         datacenter = createDatacenter();
+        nextVmId = 0;
         broker.submitVmList(createVmList());
 
         jobs = loadJobs();
