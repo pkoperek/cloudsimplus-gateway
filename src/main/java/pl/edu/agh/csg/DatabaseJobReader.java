@@ -22,15 +22,19 @@ public class DatabaseJobReader implements WorkloadReader {
     private final Long startTime;
 
     private static final Logger logger = LoggerFactory.getLogger(DatabaseJobReader.class.getName());
+    private final String dbUser;
+    private final String dbPassword;
 
     public DatabaseJobReader(Long startTime, Long endTime) {
         this.startTime = startTime;
         this.endTime = endTime;
 
-        String dbHostname = withDefault("DATABASE_HOSTNAME", "database");
+        String dbHostname = withDefault("DATABASE_HOSTNAME", "localhost");
         int dbPort = Integer.valueOf(withDefault("DATABASE_PORT", "5432"));
         String dbName = withDefault("DATABASE_NAME", "samm_db");
-        uri = "jdbc:postgresql://{}:{}/{}".format(dbHostname, dbPort, dbName);
+        this.dbUser = withDefault("DATABASE_USER", "samm");
+        this.dbPassword = withDefault("DATABASE_PASSWORD", "samm_secret");
+        this.uri = String.format("jdbc:postgresql://%s:%d/%s", dbHostname, dbPort, dbName);
     }
 
     @Override
@@ -38,8 +42,9 @@ public class DatabaseJobReader implements WorkloadReader {
 
         List<Cloudlet> cloudlets = new ArrayList<>();
         Connection conn = null;
+        Exception caught = null;
         try {
-            conn = DriverManager.getConnection(uri);
+            conn = DriverManager.getConnection(uri, dbUser, dbPassword);
 
             PreparedStatement statement = conn.prepareStatement(
                     "SELECT " +
@@ -85,6 +90,7 @@ public class DatabaseJobReader implements WorkloadReader {
 
         } catch (SQLException e) {
             e.printStackTrace();
+            caught = e;
         } finally {
             if (conn != null) {
                 try {
@@ -92,6 +98,9 @@ public class DatabaseJobReader implements WorkloadReader {
                 } catch (SQLException e) {
                     e.printStackTrace();
                 }
+            }
+            if(caught != null) {
+                throw new IOException(caught);
             }
         }
 
