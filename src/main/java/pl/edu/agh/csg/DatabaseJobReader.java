@@ -52,16 +52,16 @@ public class DatabaseJobReader implements WorkloadReader {
                             "entry_timestamp, " +
                             "start_timestamp, " +
                             "end_timestamp," +
-                            "mips_time, " +
+                            "mi, " +
                             "wall_time," +
-                            "number_of_machines," +
+                            "number_of_cores," +
                             "mips_per_machine " +
-                            "FROM observed_jobs" +
-                            "WHERE entry_timestamp BETWEEN ? AND ?"
+                            "FROM observed_jobs " +
+                            "WHERE entry_timestamp >= ? AND entry_timestamp <= ?"
             );
 
-            statement.setLong(0, startTime);
-            statement.setLong(0, endTime);
+            statement.setLong(1, startTime);
+            statement.setLong(2, endTime);
 
             statement.execute();
 
