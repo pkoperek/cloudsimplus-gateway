@@ -168,9 +168,9 @@ public class SimulationEnvironment {
 
     private List<Cloudlet> loadJobs(Map<String, String> parameters) throws IOException {
         WorkloadReader generator;
-        if(parameters.containsKey("start_time")) {
-            Long startTime = Long.valueOf(parameters.get("start_time"));
-            Long endTime = Long.valueOf(parameters.get("end_time"));
+        if(parameters.containsKey("START_TIME")) {
+            Long startTime = Long.valueOf(parameters.get("START_TIME"));
+            Long endTime = Long.valueOf(parameters.get("END_TIME"));
 
             generator = new DatabaseJobReader(startTime, endTime);
         } else {
