@@ -1,0 +1,28 @@
+version: '3'
+services:
+#  gateway: 
+#    image: pkoperek/cloudsimplus-gateway:latest
+#    environment:
+#      - TEST_FILE=KTH-SP2-1996-2.1-cln.swf
+#    depends_on:
+#      - sammdb
+  
+  sammdb:
+    image: postgres:11
+    container_name: sammdb
+    ports:
+      - 5432:5432
+    volumes:
+      - ./test_data:/storage
+      - ./test_initdb:/docker-entrypoint-initdb.d
+    environment:
+      - PGDATA=/storage
+      - POSTGRES_USER=samm
+      - POSTGRES_PASSWORD=samm_secret
+      - POSTGRES_DB=samm_db
+
+  adminer:
+    image: adminer
+    container_name: sammadminer
+    ports:
+      - 8081:8080
