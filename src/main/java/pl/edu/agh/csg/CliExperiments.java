@@ -3,9 +3,7 @@ package pl.edu.agh.csg;
 import org.cloudbus.cloudsim.cloudlets.Cloudlet;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 
 /**
  * Code used to generate different data points from static tests on the KTH-SP2 dataset
@@ -13,11 +11,11 @@ import java.util.List;
 class CliExperiments {
     public static void main(String[] args) {
         try {
-            SimulationEnvironment simulationEnvironment = new SimulationEnvironment("KTH-SP2-1996-2.1-cln_50.swf");
+            SimulationEnvironment simulationEnvironment = new SimulationEnvironment();
 
             List<Double> results = new ArrayList<>();
-            for (int i = 0; i < 10; i++) {
-                results.add(simulateComplete(simulationEnvironment));
+            for (int i = 0; i < 1; i++) {
+                results.add(simulateCompleteEpisode(simulationEnvironment));
             }
 
             System.out.println(Arrays.toString(results.toArray()));
@@ -30,8 +28,13 @@ class CliExperiments {
         }
     }
 
-    private static double simulateComplete(SimulationEnvironment simulationEnvironment) throws IOException, InterruptedException {
-        simulationEnvironment.reset();
+    private static double simulateCompleteEpisode(SimulationEnvironment simulationEnvironment) throws IOException, InterruptedException {
+        Map<String, String> parameters = new HashMap<>();
+
+        // 1 minute time window
+        parameters.put("START_TIME", "1544026148002");
+        parameters.put("END_TIME", "1544026148062");
+        simulationEnvironment.reset(parameters);
         double totalReward = 0.0;
         double totalWaitTime = 0.0;
         while (true) {

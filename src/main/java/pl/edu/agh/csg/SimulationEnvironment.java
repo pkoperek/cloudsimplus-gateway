@@ -172,9 +172,9 @@ public class SimulationEnvironment {
             Long startTime = Long.valueOf(parameters.get("START_TIME"));
             Long endTime = Long.valueOf(parameters.get("END_TIME"));
 
-            generator = new DatabaseJobReader(startTime, endTime);
+            generator = new DatabaseJobReader(startTime, endTime, (int) hostPeCnt);
         } else {
-            String testFile = parameters.getOrDefault("test_file", withDefault("TEST_FILE", "KTH-SP2-1996-2.1-cln.swf"));
+            String testFile = parameters.getOrDefault("test_file", withDefault("TEST_FILE", "KTH-SP2-1996-2.1-cln_1.swf"));
             int mips = Integer.parseInt(withDefault("INPUT_MIPS", "120"));
             generator = WorkloadFileReader.getInstance(testFile, mips, hostPeCnt);
         }
