@@ -16,7 +16,7 @@ public class VmCost {
 
     public VmCost(double perHourVMCost) {
         this.perHourVMCost = perHourVMCost;
-        this.perSecondVMCost = perHourVMCost * 0.00028;
+        this.perSecondVMCost = perHourVMCost * 0.00028; // 1/3600
     }
 
     public void notifyCreateVM(Vm vm, double clock) {
@@ -32,8 +32,8 @@ public class VmCost {
         List<Vm> toRemove = new ArrayList<>();
         for(Vm vm : createdVms) {
             // check if the vm is started
-            if(vm.getStartTime() > 0.0) {
-                if(vm.getStopTime() > 0.0) {
+            if(vm.getStartTime() > -1) {
+                if(vm.getStopTime() > -1) {
                     // vm was stopped - we continue to pay for it within the last running hour
                     if(clock <= vm.getStopTime() + SECONDS_IN_HOUR) {
                         totalCost += perSecondVMCost;
@@ -44,6 +44,9 @@ public class VmCost {
                     // vm still running - just
                     totalCost += perSecondVMCost;
                 }
+            } else {
+                // created - not running yet, need to pay for it
+                totalCost += perSecondVMCost;
             }
         }
         removedVms.addAll(toRemove);

@@ -287,9 +287,11 @@ public class SimulationEnvironment {
 
     private double calculateReward() {
         // 0.00028 = 1/3600 - scale hourly cost to cost per second
-        return -vmCost.getVMCostPerSecond(this.cloudSim.clock())
-                // this is the penalty we add for queue wait times
-                - totalLatencyHistory.get(totalLatencyHistory.size() - 1) * this.queueWaitPenalty;
+        double vmRunningCost = -vmCost.getVMCostPerSecond(this.cloudSim.clock());
+        // this is the penalty we add for queue wait times
+        double penalty = - totalLatencyHistory.get(totalLatencyHistory.size() - 1) * this.queueWaitPenalty;
+        logger.debug("Calculating reward: VMs {} + Penalty {} = {}", vmRunningCost, penalty, vmRunningCost + penalty);
+        return vmRunningCost + penalty;
     }
 
     private void collectMetrics() {

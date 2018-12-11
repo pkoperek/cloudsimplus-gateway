@@ -39,12 +39,14 @@ class CliExperiments {
         double totalWaitTime = 0.0;
 
         boolean added = false;
+        int stepsCnt = 0;
         while (true) {
             int action = 0;
             if(!added) action = 1;
             added = true;
 
             SimulationStepResult stepResult = simulationEnvironment.step(action);
+            stepsCnt++;
             totalReward += stepResult.getReward();
             totalWaitTime += stepResult.getObs()[5];
 
@@ -53,10 +55,10 @@ class CliExperiments {
             final long stop = System.nanoTime();
             System.out.println("Render time: " + ((stop - start) / 1000000000.0) + "s");
             System.out.println("Render size: " + env.length());
-
+            System.out.println("Total reward: " + totalReward + " total wait: " + totalWaitTime);
             System.out.println("Observations: " + Arrays.toString(stepResult.getObs()) + " reward: " + stepResult.getReward());
             if (stepResult.isDone()) {
-                System.out.println(">>> SIMULATION FINISHED <<<");
+                System.out.println(">>> SIMULATION FINISHED <<< >>> Steps " + stepsCnt + " <<<");
                 break;
             }
         }
