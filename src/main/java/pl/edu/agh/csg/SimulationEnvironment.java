@@ -69,6 +69,8 @@ public class SimulationEnvironment {
     private double until = 0.01;
     private Gson gson = new Gson();
     private Map<Integer, Double> originalSubmissionDelay = new HashMap<>();
+    private VmCost vmCost = new VmCost(vmRunningHourlyCost);
+    private Map<Integer, Vm> vmSubmissionDelay = new HashMap<>();
 
     public void reset() throws IOException, InterruptedException {
         reset(null);
@@ -79,10 +81,12 @@ public class SimulationEnvironment {
 
         Map<String, String> parameters = withDefault(maybeParameters);
 
+        vmCost.clear();
         close();
         clearMetricsHistory();
         reReadSettings();
 
+        vmSubmissionDelay.clear();
         cloudSim = createSimulation();
         broker = createDatacenterBroker();
         datacenter = createDatacenter();
@@ -163,12 +167,13 @@ public class SimulationEnvironment {
         this.nextVmId++;
         vm.setRam(hostRam).setBw(hostBw).setSize(hostSize)
                 .setCloudletScheduler(new CloudletSchedulerSpaceShared());
+        vmCost.notifyCreateVM(vm, this.cloudSim.clock());
         return vm;
     }
 
     private List<Cloudlet> loadJobs(Map<String, String> parameters) throws IOException {
         WorkloadReader generator;
-        if(parameters.containsKey("START_TIME")) {
+        if (parameters.containsKey("START_TIME")) {
             Long startTime = Long.valueOf(parameters.get("START_TIME"));
             Long endTime = Long.valueOf(parameters.get("END_TIME"));
 
@@ -242,6 +247,7 @@ public class SimulationEnvironment {
 
     public SimulationStepResult step(int action) {
         executeAction(action);
+        enableDelayedVMs();
 
         cloudSim.runStep(until);
         until += TIME_QUANT;
@@ -259,7 +265,7 @@ public class SimulationEnvironment {
         };
         double reward = calculateReward();
 
-        logger.debug("Step finished (action: " + action + ")");
+        logger.debug("Step finished (action: " + action + ") done: " + done + " no of cloudlets: " + jobs.size());
 
         return new SimulationStepResult(
                 done,
@@ -268,9 +274,20 @@ public class SimulationEnvironment {
         );
     }
 
+    private void enableDelayedVMs() {
+        // attempt to launch delayed VMs
+        for(Integer id : new ArrayList<>(vmSubmissionDelay.keySet())) {
+            Vm vm = vmSubmissionDelay.get(id);
+            if(this.cloudSim.clock() >= vm.getSubmissionDelay()) {
+                broker.submitVmList(Arrays.asList(vm));
+                vmSubmissionDelay.remove(id);
+            }
+        }
+    }
+
     private double calculateReward() {
         // 0.00028 = 1/3600 - scale hourly cost to cost per second
-        return -broker.getVmExecList().size() * vmRunningHourlyCost * 0.00028
+        return -vmCost.getVMCostPerSecond(this.cloudSim.clock())
                 // this is the penalty we add for queue wait times
                 - totalLatencyHistory.get(totalLatencyHistory.size() - 1) * this.queueWaitPenalty;
     }
@@ -360,8 +377,13 @@ public class SimulationEnvironment {
                 break;
             case 1:
                 // adding a new vm
+                // assuming average delay up to 97s as in 10.1109/CLOUD.2012.103
+                // from anecdotal exp the startup time can be as fast as 45s
                 Vm newVm = createVmWithId();
-                broker.submitVmList(Arrays.asList(newVm));
+                double delay = this.cloudSim.clock() + 45 + Math.random() * 52;
+                newVm.setSubmissionDelay(delay);
+                vmSubmissionDelay.put(newVm.getId(), newVm);
+                logger.debug("VM creating requested, delay: " + delay);
                 break;
             case 2:
                 // removing randomly one of the vms
@@ -382,7 +404,7 @@ public class SimulationEnvironment {
                         vmExecList.remove(toDestroy);
                         cloudSim.send(broker, datacenter, 0, CloudSimTags.VM_DESTROY, toDestroy);
 
-                        Vm finalToDestroy = toDestroy;
+                        final Vm finalToDestroy = toDestroy;
                         List<Cloudlet> toReschedule = jobs.stream()
                                 .filter(j -> j.getVm() == finalToDestroy)
                                 .filter(j -> j.getStatus() != Cloudlet.Status.SUCCESS)

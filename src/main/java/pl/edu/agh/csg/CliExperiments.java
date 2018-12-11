@@ -32,13 +32,19 @@ class CliExperiments {
         Map<String, String> parameters = new HashMap<>();
 
         // 1 minute time window
-        parameters.put("START_TIME", "1544026148002");
-        parameters.put("END_TIME", "1544026148062");
+//        parameters.put("START_TIME", "1544026148002");
+//        parameters.put("END_TIME", "1544026148062");
         simulationEnvironment.reset(parameters);
         double totalReward = 0.0;
         double totalWaitTime = 0.0;
+
+        boolean added = false;
         while (true) {
-            SimulationStepResult stepResult = simulationEnvironment.step(0);
+            int action = 0;
+            if(!added) action = 1;
+            added = true;
+
+            SimulationStepResult stepResult = simulationEnvironment.step(action);
             totalReward += stepResult.getReward();
             totalWaitTime += stepResult.getObs()[5];
 
