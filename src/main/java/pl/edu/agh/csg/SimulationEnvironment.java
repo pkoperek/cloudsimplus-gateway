@@ -3,6 +3,7 @@ package pl.edu.agh.csg;
 import com.google.gson.Gson;
 import org.apache.commons.collections4.queue.CircularFifoQueue;
 import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.NotImplementedException;
 import org.apache.commons.math3.stat.StatUtils;
 import org.cloudbus.cloudsim.allocationpolicies.VmAllocationPolicySimple;
 import org.cloudbus.cloudsim.brokers.DatacenterBroker;
@@ -48,7 +49,7 @@ public class SimulationEnvironment {
     private long hostPeMips = 10000;
     private long hostPeCnt = 4;
 
-    private int initialVMCount = 10;
+    private int defaultInitialVmCount = 10;
     private static final int DATACENTER_HOSTS = 1000;
 
     private Random random = new Random(System.currentTimeMillis());
@@ -72,29 +73,37 @@ public class SimulationEnvironment {
     private VmCost vmCost = new VmCost(vmRunningHourlyCost);
     private Map<Integer, Vm> vmSubmissionDelay = new HashMap<>();
 
+    public SimulationEnvironment() {
+        readSettings();
+    }
+
     public void reset() throws IOException, InterruptedException {
         reset(null);
+    }
+
+    private int retrieveInitialVmCount() {
+        // TODO: implement retrieving the initial state of environment to the simulator
+        // TODO: add metrics which are compatible with the real environment: the number of tasks wwaiting for execution
+        throw new NotImplementedException("Implement me!");
     }
 
     public void reset(Map<String, String> maybeParameters) throws IOException, InterruptedException {
         logger.debug("Environment reset started");
 
         Map<String, String> parameters = withDefault(maybeParameters);
+        int initialVmCount = retrieveInitialVmCount(maybeParameters);
 
         vmCost.clear();
         close();
         clearMetricsHistory();
-        reReadSettings();
 
         vmSubmissionDelay.clear();
         cloudSim = createSimulation();
         broker = createDatacenterBroker();
         datacenter = createDatacenter();
         nextVmId = 0;
-        broker.submitVmList(createVmList());
-
+        broker.submitVmList(createVmList(initialVmCount));
         jobs = loadJobs(parameters);
-
         broker.submitCloudletList(jobs);
 
         // let simulation setup stuff
@@ -106,14 +115,14 @@ public class SimulationEnvironment {
         logger.debug("Environment reset finished");
     }
 
-    private void reReadSettings() {
+    private void readSettings() {
         vmRunningHourlyCost = Double.parseDouble(withDefault("VM_RUNNING_HOURLY_COST", "0.2"));
         hostPeMips = Long.parseLong(withDefault("HOST_PE_MIPS", "10000"));
         hostBw = Long.parseLong(withDefault("HOST_BW", "50000"));
         hostRam = Long.parseLong(withDefault("HOST_RAM", "16384"));
         hostSize = Long.parseLong(withDefault("HOST_SIZE", "2000"));
         hostPeCnt = Long.parseLong(withDefault("HOST_PE_CNT", "4"));
-        initialVMCount = Integer.parseInt(withDefault("INITIAL_VM_COUNT", "10"));
+        defaultInitialVmCount = Integer.parseInt(withDefault("INITIAL_VM_COUNT", "10"));
         queueWaitPenalty = Double.parseDouble(withDefault("QUEUE_WAIT_PENALTY", "0.00001"));
     }
 
@@ -151,10 +160,10 @@ public class SimulationEnvironment {
         return new DatacenterBrokerSimple(cloudSim);
     }
 
-    private List<? extends Vm> createVmList() {
+    private List<? extends Vm> createVmList(int vmCount) {
         List<Vm> vmList = new ArrayList<>(1);
 
-        for (int i = 0; i < initialVMCount; i++) {
+        for (int i = 0; i < vmCount; i++) {
             // 1 VM == 1 HOST for simplicity
             vmList.add(createVmWithId());
         }
@@ -232,11 +241,11 @@ public class SimulationEnvironment {
     public String render() {
         double[][] renderedEnv = {
                 asPrimitives(this.vmCountHistory),
-                asPrimitives(this.p99LatencyHistory),
-                asPrimitives(this.p90LatencyHistory),
+//                asPrimitives(this.p99LatencyHistory),
+//                asPrimitives(this.p90LatencyHistory),
                 asPrimitives(this.avgCPUUtilizationHistory),
                 asPrimitives(this.p90CPUUtilizationHistory),
-                asPrimitives(this.totalLatencyHistory)
+//                asPrimitives(this.totalLatencyHistory)
         };
         return gson.toJson(renderedEnv);
     }
@@ -245,7 +254,7 @@ public class SimulationEnvironment {
         return ArrayUtils.toPrimitive(queue.toArray(doubles));
     }
 
-    public SimulationStepResult step(int action) {
+    public SimulationStepResult step(int action, int initialVMCount) {
         executeAction(action);
         enableDelayedVMs();
 
@@ -276,9 +285,9 @@ public class SimulationEnvironment {
 
     private void enableDelayedVMs() {
         // attempt to launch delayed VMs
-        for(Integer id : new ArrayList<>(vmSubmissionDelay.keySet())) {
+        for (Integer id : new ArrayList<>(vmSubmissionDelay.keySet())) {
             Vm vm = vmSubmissionDelay.get(id);
-            if(this.cloudSim.clock() >= vm.getSubmissionDelay()) {
+            if (this.cloudSim.clock() >= vm.getSubmissionDelay()) {
                 broker.submitVmList(Arrays.asList(vm));
                 vmSubmissionDelay.remove(id);
             }
@@ -289,7 +298,7 @@ public class SimulationEnvironment {
         // 0.00028 = 1/3600 - scale hourly cost to cost per second
         double vmRunningCost = -vmCost.getVMCostPerSecond(this.cloudSim.clock());
         // this is the penalty we add for queue wait times
-        double penalty = - totalLatencyHistory.get(totalLatencyHistory.size() - 1) * this.queueWaitPenalty;
+        double penalty = -totalLatencyHistory.get(totalLatencyHistory.size() - 1) * this.queueWaitPenalty;
         logger.debug("Calculating reward: VMs {} + Penalty {} = {}", vmRunningCost, penalty, vmRunningCost + penalty);
         return vmRunningCost + penalty;
     }
