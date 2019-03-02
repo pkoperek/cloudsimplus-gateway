@@ -81,7 +81,7 @@ public class SimulationEnvironment {
         reset(null);
     }
 
-    private int retrieveInitialVmCount() {
+    private int retrieveInitialVmCount(Map<String, String> maybeParameters) {
         // TODO: implement retrieving the initial state of environment to the simulator
         // TODO: add metrics which are compatible with the real environment: the number of tasks wwaiting for execution
         throw new NotImplementedException("Implement me!");
