@@ -77,7 +77,7 @@ public class SimulationEnvironment {
         reset();
     }
 
-    public void reset() throws IOException, InterruptedException {
+    public ResetResult reset() throws IOException, InterruptedException {
         logger.debug("Environment reset started");
 
         close();
@@ -110,6 +110,8 @@ public class SimulationEnvironment {
         until = TIME_QUANT;
 
         logger.debug("Environment reset finished");
+
+        return new ResetResult(observationSnapshot());
     }
 
     private String withDefault(String parameterName, String defaultValue) {
@@ -248,14 +250,7 @@ public class SimulationEnvironment {
         collectMetrics();
 
         boolean done = !cloudSim.isRunning();
-        double[] observation = new double[]{
-                vmCountHistory.get(vmCountHistory.size() - 1),
-                p99LatencyHistory.get(p99LatencyHistory.size() - 1),
-                p90LatencyHistory.get(p90LatencyHistory.size() - 1),
-                avgCPUUtilizationHistory.get(avgCPUUtilizationHistory.size() - 1),
-                p90CPUUtilizationHistory.get(p90CPUUtilizationHistory.size() - 1),
-                totalLatencyHistory.get(totalLatencyHistory.size() - 1)
-        };
+        double[] observation = observationSnapshot();
         double reward = calculateReward();
 
         logger.debug("Step finished (action: " + action + ")");
@@ -265,6 +260,17 @@ public class SimulationEnvironment {
                 observation,
                 reward
         );
+    }
+
+    private double[] observationSnapshot() {
+        return new double[]{
+                vmCountHistory.get(vmCountHistory.size() - 1),
+                p99LatencyHistory.get(p99LatencyHistory.size() - 1),
+                p90LatencyHistory.get(p90LatencyHistory.size() - 1),
+                avgCPUUtilizationHistory.get(avgCPUUtilizationHistory.size() - 1),
+                p90CPUUtilizationHistory.get(p90CPUUtilizationHistory.size() - 1),
+                totalLatencyHistory.get(totalLatencyHistory.size() - 1)
+        };
     }
 
     private double calculateReward() {
