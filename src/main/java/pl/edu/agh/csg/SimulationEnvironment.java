@@ -10,6 +10,7 @@ import org.cloudbus.cloudsim.brokers.DatacenterBrokerSimple;
 import org.cloudbus.cloudsim.cloudlets.Cloudlet;
 import org.cloudbus.cloudsim.core.CloudSim;
 import org.cloudbus.cloudsim.core.CloudSimTags;
+import org.cloudbus.cloudsim.core.DatacenterBrokerSimple2;
 import org.cloudbus.cloudsim.datacenters.Datacenter;
 import org.cloudbus.cloudsim.datacenters.DatacenterSimple;
 import org.cloudbus.cloudsim.hosts.Host;
@@ -51,7 +52,7 @@ public class SimulationEnvironment {
     private Random random = new Random(System.currentTimeMillis());
 
     private CloudSim cloudSim = null;
-    private DatacenterBroker broker = null;
+    private DatacenterBrokerSimple2 broker = null;
     private Datacenter datacenter = null;
     private CircularFifoQueue<Double> vmCountHistory = new CircularFifoQueue<>(HISTORY_LENGTH);
     private CircularFifoQueue<Double> p99LatencyHistory = new CircularFifoQueue<>(HISTORY_LENGTH);
@@ -74,7 +75,6 @@ public class SimulationEnvironment {
 
     public SimulationEnvironment(String testFile) throws IOException, InterruptedException {
         this.testFile = testFile != null ? testFile : withDefault("TEST_FILE", "KTH-SP2-1996-2.1-cln.swf");
-        reset();
     }
 
     public ResetResult reset() throws IOException, InterruptedException {
@@ -154,8 +154,8 @@ public class SimulationEnvironment {
         logger.info("Simulation is synchronous - doing nothing");
     }
 
-    private DatacenterBrokerSimple createDatacenterBroker() {
-        return new DatacenterBrokerSimple(cloudSim);
+    private DatacenterBrokerSimple2 createDatacenterBroker() {
+        return new DatacenterBrokerSimple2(cloudSim);
     }
 
     private List<? extends Vm> createVmList() {
@@ -201,9 +201,9 @@ public class SimulationEnvironment {
         });
 
         logger.info("Loaded: " + cloudlets.size() + " jobs");
-        for (Cloudlet cloudlet : cloudlets) {
-            logger.info("Cloudlet: " + cloudlet.getId() + " " + cloudlet.getSubmissionDelay());
-        }
+//        for (Cloudlet cloudlet : cloudlets) {
+//            logger.info("Cloudlet: " + cloudlet.getId() + " " + cloudlet.getSubmissionDelay());
+//        }
         return cloudlets;
     }
 
@@ -375,12 +375,7 @@ public class SimulationEnvironment {
 
                 if (upperBound > 1) {
                     int vmIdToKill = random.nextInt(upperBound);
-                    Vm toDestroy = null;
-                    for (int i = 0; i < vmExecList.size(); i++) {
-                        if (i == vmIdToKill) {
-                            toDestroy = vmExecList.get(i);
-                        }
-                    }
+                    Vm toDestroy = vmExecList.get(vmIdToKill);;
                     if (toDestroy != null) {
                         toDestroy.getHost().destroyVm(toDestroy);
 
@@ -395,19 +390,18 @@ public class SimulationEnvironment {
 
                         logger.debug("Killing VM: to reschedule cloudlets: " + toReschedule.size());
 
-                        toReschedule.forEach(j -> {
-                            double submissionDelay = originalSubmissionDelay.getOrDefault(j, 0.0);
-                            submissionDelay -= cloudSim.clock();
+                        toReschedule.forEach(cloudlet -> {
+//                            double submissionDelay = originalSubmissionDelay.getOrDefault(cloudlet.getId(), 0.0);
+//                            submissionDelay -= cloudSim.clock();
+//
+//                            if(submissionDelay < 1.0) {
+//                                submissionDelay = 1.0;
+//                            }
+//
+//                            cloudlet.setSubmissionDelay(submissionDelay);
 
-                            if(submissionDelay < 1.0) {
-                                submissionDelay = 1.0;
-                            }
-
-                            j.setSubmissionDelay(submissionDelay);
-
-                            j.setStatus(Cloudlet.Status.INSTANTIATED);
-                            j.setVm(Vm.NULL);
-                            j.setBroker(DatacenterBroker.NULL);
+                            cloudlet.setStatus(Cloudlet.Status.INSTANTIATED);
+                            cloudlet.setVm(Vm.NULL);
                         });
 
                         broker.submitCloudletList(toReschedule);
@@ -417,7 +411,7 @@ public class SimulationEnvironment {
                         logger.debug("Can't kill a VM: toDestroy is NULL");
                     }
                 } else {
-                    logger.debug("Can't kill a VM - only one running");
+                    logger.debug("Can't kill a VM - only one/zero running");
                 }
 
                 break;
@@ -431,24 +425,7 @@ public class SimulationEnvironment {
 
     private CloudSim createSimulation() throws IOException {
         CloudSim cloudSim = new CloudSim();
-        cloudSim.addOnClockTickListener(this::onClockTickListener);
         return cloudSim;
-    }
-
-    private void onClockTickListener(EventInfo eventInfo) {
-        logger.debug("onClockTickListener(): Clock tick detected: " + eventInfo.getTime());
-
-        List<Vm> runningVms = this.broker.getVmExecList();
-        if (runningVms.size() > 0) {
-            Set<Cloudlet> cloudlets = this.broker.getCloudletCreatedList();
-
-            int i = 0;
-            for (Cloudlet cloudlet : cloudlets) {
-                if (cloudlet.getStatus() == Cloudlet.Status.INSTANTIATED) {
-                    cloudlet.setVm(runningVms.get(i++ % runningVms.size()));
-                }
-            }
-        }
     }
 
     public long ping() {
