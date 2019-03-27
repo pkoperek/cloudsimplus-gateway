@@ -299,11 +299,11 @@ public class CloudSim implements Simulation {
         }
         long stop3 = System.currentTimeMillis();
 
-        System.out.println(String.format(
-                ">>>>>>>>>>> STATS processAllFutureEventsHappeningAtSameTimeOfTheFirstOne: 1 %s s 2 %s s 3 %s s",
-                (stop1 - start1) / 1000.0,
-                (stop2 - start2) / 1000.0,
-                (stop3 - start3) / 1000.0));
+//        System.out.println(String.format(
+//                ">>>>>>>>>>> STATS processAllFutureEventsHappeningAtSameTimeOfTheFirstOne: 1 %s s 2 %s s 3 %s s",
+//                (stop1 - start1) / 1000.0,
+//                (stop2 - start2) / 1000.0,
+//                (stop3 - start3) / 1000.0));
     }
 
     /**
@@ -705,7 +705,7 @@ public class CloudSim implements Simulation {
             }
         }).findFirst();
         long stop = System.currentTimeMillis();
-        System.out.println(String.format(">>>>>>>>>>> STATS eventWithinTimelimit: %s %s", (stop-start)/1000.0, future.size()));
+        //System.out.println(String.format(">>>>>>>>>>> STATS eventWithinTimelimit: %s %s", (stop-start)/1000.0, future.size()));
         return first;
     }
 
