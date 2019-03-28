@@ -60,6 +60,7 @@ public class SimulationEnvironment {
     private CircularFifoQueue<Double> avgCPUUtilizationHistory = new CircularFifoQueue<>(HISTORY_LENGTH);
     private CircularFifoQueue<Double> p90CPUUtilizationHistory = new CircularFifoQueue<>(HISTORY_LENGTH);
     private CircularFifoQueue<Double> totalLatencyHistory = new CircularFifoQueue<>(HISTORY_LENGTH);
+    private CircularFifoQueue<Double> waitingQueueLengthHistory = new CircularFifoQueue<>(HISTORY_LENGTH);
     private Double[] doubles = new Double[0];
     private int nextVmId = 0;
     private List<Cloudlet> jobs = new LinkedList<>();
@@ -67,7 +68,6 @@ public class SimulationEnvironment {
     private final String testFile;
     private double until = 0.01;
     private Gson gson = new Gson();
-    private Map<Integer, Double> originalSubmissionDelay = new HashMap<>();
 
     public SimulationEnvironment() throws IOException, InterruptedException {
         this(null);
@@ -98,9 +98,6 @@ public class SimulationEnvironment {
         broker.submitVmList(createVmList());
 
         jobs = loadJobs();
-
-        jobs.stream().forEach(j -> originalSubmissionDelay.put(j.getId(), j.getSubmissionDelay()));
-
         broker.submitCloudletList(jobs);
 
         // let simulation setup stuff
@@ -131,6 +128,7 @@ public class SimulationEnvironment {
         this.p90LatencyHistory.clear();
         this.avgCPUUtilizationHistory.clear();
         this.totalLatencyHistory.clear();
+        this.waitingQueueLengthHistory.clear();
 
         fillWithZeros(this.vmCountHistory);
         fillWithZeros(this.p90CPUUtilizationHistory);
@@ -138,6 +136,7 @@ public class SimulationEnvironment {
         fillWithZeros(this.p99LatencyHistory);
         fillWithZeros(this.avgCPUUtilizationHistory);
         fillWithZeros(this.totalLatencyHistory);
+        fillWithZeros(this.waitingQueueLengthHistory);
     }
 
     private void fillWithZeros(Queue<Double> queue) {
@@ -232,7 +231,8 @@ public class SimulationEnvironment {
                 asPrimitives(this.p90LatencyHistory),
                 asPrimitives(this.avgCPUUtilizationHistory),
                 asPrimitives(this.p90CPUUtilizationHistory),
-                asPrimitives(this.totalLatencyHistory)
+                asPrimitives(this.totalLatencyHistory),
+                asPrimitives(this.waitingQueueLengthHistory)
         };
         return gson.toJson(renderedEnv);
     }
@@ -264,20 +264,25 @@ public class SimulationEnvironment {
 
     private double[] observationSnapshot() {
         return new double[]{
-                vmCountHistory.get(vmCountHistory.size() - 1),
-                p99LatencyHistory.get(p99LatencyHistory.size() - 1),
-                p90LatencyHistory.get(p90LatencyHistory.size() - 1),
-                avgCPUUtilizationHistory.get(avgCPUUtilizationHistory.size() - 1),
-                p90CPUUtilizationHistory.get(p90CPUUtilizationHistory.size() - 1),
-                totalLatencyHistory.get(totalLatencyHistory.size() - 1)
+                this.lastValue(vmCountHistory),
+                this.lastValue(p99LatencyHistory),
+                this.lastValue(p90LatencyHistory),
+                this.lastValue(avgCPUUtilizationHistory),
+                this.lastValue(p90CPUUtilizationHistory),
+                this.lastValue(totalLatencyHistory),
+                this.lastValue(waitingQueueLengthHistory)
         };
+    }
+
+    private double lastValue(CircularFifoQueue<Double> collection) {
+        return collection.get(collection.size() - 1);
     }
 
     private double calculateReward() {
         // 0.00028 = 1/3600 - scale hourly cost to cost per second
         return -broker.getVmExecList().size() * vmRunningHourlyCost * 0.00028
                 // this is the penalty we add for queue wait times
-                - totalLatencyHistory.get(totalLatencyHistory.size() - 1) * this.queueWaitPenalty;
+                - this.lastValue(waitingQueueLengthHistory) * this.queueWaitPenalty;
     }
 
     private void collectMetrics() {
@@ -285,16 +290,21 @@ public class SimulationEnvironment {
         this.vmCountHistory.add((double) broker.getVmExecList().size());
 
         // latency history
-        double cutOffTime = Math.floor(cloudSim.clock() - 1.0);
+        double clock = cloudSim.clock();
         List<Double> waitingTimes = new ArrayList<>();
-        for (Cloudlet cloudlet : broker.getCloudletFinishedList()) {
-            if (cloudlet.getFinishTime() > cutOffTime) {
-                double systemEntryTime = this.originalSubmissionDelay.get(cloudlet.getId());
-                // systemEntryTime should be always less than exec start time
-                double realWaitingTime = cloudlet.getExecStartTime() - systemEntryTime;
-                waitingTimes.add(realWaitingTime);
+        for (Cloudlet cloudlet : jobs) {
+            if (Cloudlet.Status.QUEUED.equals(cloudlet.getStatus())) {
+                if (cloudlet.getSubmissionDelay() < clock) {
+                    double systemEntryTime = cloudlet.getSubmissionDelay();
+                    // systemEntryTime should be always less than exec start time
+                    double realWaitingTime = clock - systemEntryTime;
+                    waitingTimes.add(realWaitingTime);
+                }
             }
         }
+        this.waitingQueueLengthHistory.add(Double.valueOf(waitingTimes.size()));
+
+        logger.debug("Waiting jobs: " + waitingTimes.size());
 
         Collections.sort(waitingTimes);
         double[] sortedWaitingTimes = ArrayUtils.toPrimitive(waitingTimes.toArray(doubles));
@@ -330,8 +340,6 @@ public class SimulationEnvironment {
     }
 
     private double percentile(double[] data, double percentile) {
-        String dataAsString = Arrays.toString(data);
-
         if (data.length == 0) {
             return 0.0;
         }
@@ -375,7 +383,8 @@ public class SimulationEnvironment {
 
                 if (upperBound > 1) {
                     int vmIdToKill = random.nextInt(upperBound);
-                    Vm toDestroy = vmExecList.get(vmIdToKill);;
+                    Vm toDestroy = vmExecList.get(vmIdToKill);
+                    ;
                     if (toDestroy != null) {
                         toDestroy.getHost().destroyVm(toDestroy);
 
@@ -391,15 +400,6 @@ public class SimulationEnvironment {
                         logger.debug("Killing VM: to reschedule cloudlets: " + toReschedule.size());
 
                         toReschedule.forEach(cloudlet -> {
-//                            double submissionDelay = originalSubmissionDelay.getOrDefault(cloudlet.getId(), 0.0);
-//                            submissionDelay -= cloudSim.clock();
-//
-//                            if(submissionDelay < 1.0) {
-//                                submissionDelay = 1.0;
-//                            }
-//
-//                            cloudlet.setSubmissionDelay(submissionDelay);
-
                             cloudlet.setStatus(Cloudlet.Status.INSTANTIATED);
                             cloudlet.setVm(Vm.NULL);
                         });
@@ -425,7 +425,30 @@ public class SimulationEnvironment {
 
     private CloudSim createSimulation() throws IOException {
         CloudSim cloudSim = new CloudSim();
+        cloudSim.addOnClockTickListener(this::onClockTickListener);
         return cloudSim;
+    }
+
+    private void onClockTickListener(EventInfo eventInfo) {
+        logger.debug("onClockTickListener(): Clock tick detected: " + eventInfo.getTime());
+
+        List<Vm> runningVms = this.broker.getVmExecList();
+        if (runningVms.size() > 0) {
+            int i = 0;
+            for (Cloudlet cloudlet : jobs) {
+                if (cloudlet.getStatus() == Cloudlet.Status.QUEUED && cloudlet.getSubmissionDelay() <= cloudSim.clock()) {
+                    Vm toAssign = runningVms.get(i++ % runningVms.size());
+                    while (toAssign.getCpuPercentUsage() > 0.0 && runningVms.size() > i) {
+                        toAssign = runningVms.get(i++);
+                    }
+
+                    Vm currentVm = cloudlet.getVm();
+                    currentVm.getCloudletScheduler().cloudletCancel(cloudlet.getId());
+                    cloudlet.setVm(toAssign);
+                    toAssign.getCloudletScheduler().cloudletSubmit(cloudlet);
+                }
+            }
+        }
     }
 
     public long ping() {
