@@ -90,8 +90,8 @@ public class SimulationEnvironment {
         hostSize = Long.parseLong(withDefault("HOST_SIZE", "2000"));
         hostPeCnt = Long.parseLong(withDefault("HOST_PE_CNT", "4"));
         initialVMCount = Integer.parseInt(withDefault("INITIAL_VM_COUNT", "10"));
-
         queueWaitPenalty = Double.parseDouble(withDefault("QUEUE_WAIT_PENALTY", "0.00001"));
+
         cloudSim = createSimulation();
         broker = createDatacenterBroker();
         datacenter = createDatacenter();
@@ -172,8 +172,7 @@ public class SimulationEnvironment {
     private Vm createVmWithId() {
         Vm vm = new VmSimple(this.nextVmId, hostPeMips, hostPeCnt);
         this.nextVmId++;
-        vm.setRam(hostRam).setBw(hostBw).setSize(hostSize)
-                .setCloudletScheduler(new CloudletSchedulerSpaceShared());
+        vm.setRam(hostRam).setBw(hostBw).setSize(hostSize).setCloudletScheduler(new CloudletSchedulerSpaceShared());
         return vm;
     }
 
@@ -243,6 +242,12 @@ public class SimulationEnvironment {
 
     public SimulationStepResult step(int action) {
         executeAction(action);
+
+        for (Cloudlet cloudlet : jobs) {
+            if (Cloudlet.Status.INEXEC.equals(cloudlet.getStatus())) {
+                cloudSim.setCloudletsInExec();
+            }
+        }
 
         cloudSim.runStep(until);
         until += TIME_QUANT;
@@ -389,6 +394,7 @@ public class SimulationEnvironment {
                         toDestroy.getHost().destroyVm(toDestroy);
 
                         vmExecList.remove(toDestroy);
+                        toDestroy.getHost().destroyVm(toDestroy);
                         cloudSim.send(broker, datacenter, 0, CloudSimTags.VM_DESTROY, toDestroy);
 
                         Vm finalToDestroy = toDestroy;
@@ -400,7 +406,7 @@ public class SimulationEnvironment {
                         logger.debug("Killing VM: to reschedule cloudlets: " + toReschedule.size());
 
                         toReschedule.forEach(cloudlet -> {
-                            cloudlet.setStatus(Cloudlet.Status.INSTANTIATED);
+                            cloudlet.setStatus(Cloudlet.Status.QUEUED);
                             cloudlet.setVm(Vm.NULL);
                         });
 

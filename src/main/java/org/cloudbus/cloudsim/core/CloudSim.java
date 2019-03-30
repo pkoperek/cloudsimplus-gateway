@@ -8,10 +8,8 @@
 package org.cloudbus.cloudsim.core;
 
 import java.util.*;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import org.cloudbus.cloudsim.cloudlets.Cloudlet;
 import org.cloudbus.cloudsim.core.events.*;
 import org.cloudbus.cloudsim.datacenters.Datacenter;
 import org.cloudbus.cloudsim.network.topologies.NetworkTopology;
@@ -136,6 +134,7 @@ public class CloudSim implements Simulation {
     private final Set<EventListener<SimEvent>> onEventProcessingListeners;
     private final Set<EventListener<EventInfo>> onSimulationPausedListeners;
     private final Set<EventListener<EventInfo>> onClockTickListeners;
+    private boolean assumeCloudletsInExec = false;
 
     /**
      * Creates a CloudSim simulation.
@@ -670,6 +669,7 @@ public class CloudSim implements Simulation {
         if (running) {
             printMessage("Running simulation until: " + until + " starting clock: " + this.clock());
 
+            boolean triedToKickOffUpdate = false;
             while (running) {
                 executeRunnableEntities();
 
@@ -677,11 +677,38 @@ public class CloudSim implements Simulation {
                     running = false;
                     printMessage("Simulation: No more future events");
                 } else {
-                    // If there are more future events, then deal with them
-                    Optional<SimEvent> maybeFirstEvent = eventWithinTimelimit(until);
+                    Stream<SimEvent> nextEventsUntil = future.stream().filter(new Predicate<SimEvent>() {
+                        @Override
+                        public boolean test(SimEvent simEvent) {
+                            return simEvent.getTime() <= until;
+                        }
+                    });
 
-                    if (maybeFirstEvent.isPresent()) {
-                        maybeFirstEvent.ifPresent(this::processAllFutureEventsHappeningAtSameTimeOfTheFirstOne);
+                    List<SimEvent> eventList = nextEventsUntil.collect(toList());
+
+                    if(!triedToKickOffUpdate) {
+                        boolean hasVmUpdateEvent = false;
+                        for (SimEvent se : eventList) {
+                            if (se.getTag() == CloudSimTags.VM_UPDATE_CLOUDLET_PROCESSING_EVENT) {
+                                hasVmUpdateEvent = true;
+                                break;
+                            }
+                        }
+
+                        if (!hasVmUpdateEvent && this.assumeCloudletsInExec) {
+                            Datacenter datacenter = getDatacenterList().iterator().next();
+                            sendNow(datacenter, datacenter, CloudSimTags.VM_UPDATE_CLOUDLET_PROCESSING_EVENT, null);
+
+                            eventList.clear();
+                            eventList.add(future.first());
+                        }
+
+                        triedToKickOffUpdate = true;
+                    }
+
+                    if(eventList.size() > 0) {
+                        SimEvent firstEvent = eventList.get(0);
+                        processAllFutureEventsHappeningAtSameTimeOfTheFirstOne(firstEvent);
                     } else {
                         break;
                     }
@@ -694,19 +721,10 @@ public class CloudSim implements Simulation {
         } else {
             printMessage("Simulation finished at " + this.clock());
         }
+        this.assumeCloudletsInExec = false;
     }
 
-    private Optional<SimEvent> eventWithinTimelimit(double until) {
-        long start = System.currentTimeMillis();
-        Optional<SimEvent> first = future.stream().filter(new Predicate<SimEvent>() {
-            @Override
-            public boolean test(SimEvent simEvent) {
-                return simEvent.getTime() <= until;
-            }
-        }).findFirst();
-        long stop = System.currentTimeMillis();
-        //System.out.println(String.format(">>>>>>>>>>> STATS eventWithinTimelimit: %s %s", (stop-start)/1000.0, future.size()));
-        return first;
+    public void setCloudletsInExec() {
+        this.assumeCloudletsInExec = true;
     }
-
 }

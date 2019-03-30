@@ -863,50 +863,39 @@ public class DatacenterBrokerSimple2 extends CloudSimEntity implements Datacente
         final List<Cloudlet> successfullySubmitted = new ArrayList<>();
         for (final Cloudlet cloudlet : cloudletWaitingList) {
             if (cloudletCreationRequestsMap.containsKey(cloudlet)) {
-                if (cloudlet.getVm() != Vm.NULL) {
-                    continue;
-                } else {
+                if (cloudlet.getVm() == Vm.NULL) {
                     lastSelectedVm = vmMapper.apply(cloudlet);
-//                    println(String.format(
-//                            "%.2f: %s: Sending %s to a new VM: %s in %s.",
-//                            getSimulation().clock(),
-//                            getName(),
-//                            cloudlet,
-//                            lastSelectedVm,
-//                            lastSelectedVm.getHost()
-//                            )
-//                    );
-
                     cloudlet.setVm(lastSelectedVm);
                     successfullySubmitted.add(cloudlet);
-                    continue;
+
+                    if (cloudlet.getSubmissionDelay() < this.getSimulation().clock()) {
+                        send(
+                                getVmDatacenter(lastSelectedVm),
+                                this.getSimulation().clock() + 1,
+                                CloudSimTags.CLOUDLET_SUBMIT,
+                                cloudlet
+                        );
+                    }
                 }
+                continue;
             }
 
             //selects a VM for the given Cloudlet
             lastSelectedVm = vmMapper.apply(cloudlet);
             if (lastSelectedVm == Vm.NULL) {
                 // vm was not created
-                println(String.format(
-                        "%.2f: %s: : Postponing execution of %s: bind VM not available.",
-                        getSimulation().clock(), getName(), cloudlet));
+                println(
+                        String.format(
+                                "%.2f: %s: : Postponing execution of %s: bind VM not available.",
+                                getSimulation().clock(),
+                                getName(),
+                                cloudlet)
+                );
                 continue;
             }
 
-//            final String delayStr =
-//                    cloudlet.getSubmissionDelay() > 0 ?
-//                            String.format(" with a requested delay of %.0f seconds", cloudlet.getSubmissionDelay()) :
-//                            "";
-//            println(String.format(
-//                    "%.2f: %s: Sending %s to %s in %s%s.",
-//                    getSimulation().clock(), getName(), cloudlet,
-//                    lastSelectedVm, lastSelectedVm.getHost(), delayStr));
             cloudlet.setVm(lastSelectedVm);
 
-            // problem jest taki, ze za kazdym razem jak rejestrujemy cloudlety na nowo, tutaj generujemy
-            // fure eventow -> ergo, jak cloudlet spada z z vmki, to powinnismy wywalac jego
-            // eventy z kolejki future. mozna wziac kolejke, przeleciec i oznaczy jakzdy event ktory ma
-            // data == cloudlet i potem je hurtem wywalic z kolejki
             send(
                     getVmDatacenter(lastSelectedVm),
                     cloudlet.getSubmissionDelay(),
@@ -919,7 +908,7 @@ public class DatacenterBrokerSimple2 extends CloudSimEntity implements Datacente
         }
 
         // remove created cloudlets from waiting list
-        System.out.println("Removing " + successfullySubmitted.size() + " from " + cloudletWaitingList.size());
+        //System.out.println("Removing " + successfullySubmitted.size() + " from " + cloudletWaitingList.size());
         if (successfullySubmitted.size() == cloudletWaitingList.size()) {
             cloudletWaitingList.clear();
         } else {
