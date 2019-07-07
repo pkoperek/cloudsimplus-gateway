@@ -4,7 +4,7 @@ import org.apache.commons.lang3.NotImplementedException;
 import org.cloudbus.cloudsim.cloudlets.Cloudlet;
 import org.cloudbus.cloudsim.cloudlets.CloudletSimple;
 import org.cloudbus.cloudsim.util.DataCloudTags;
-import org.cloudbus.cloudsim.util.WorkloadReader;
+//import org.cloudbus.cloudsim.util.WorkloadReader;
 import org.cloudbus.cloudsim.utilizationmodels.UtilizationModelFull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,7 +17,7 @@ import java.util.function.Predicate;
 
 import static pl.edu.agh.csg.Defaults.withDefault;
 
-public class DatabaseJobReader implements WorkloadReader {
+public class DatabaseJobReader {//} implements WorkloadReader {
     private final String uri;
     private final Long endTime;
     private final double speedUp;
@@ -46,7 +46,7 @@ public class DatabaseJobReader implements WorkloadReader {
         this.uri = String.format("jdbc:postgresql://%s:%d/%s", dbHostname, dbPort, dbName);
     }
 
-    @Override
+//    @Override
     public List<Cloudlet> generateWorkload() throws IOException {
 
         List<Cloudlet> cloudlets = new ArrayList<>();
@@ -130,9 +130,9 @@ public class DatabaseJobReader implements WorkloadReader {
         cloudlet.setSubmissionDelay(submissionDelay / speedUp);
         return cloudlet;
     }
-
-    @Override
-    public WorkloadReader setPredicate(Predicate<Cloudlet> predicate) {
-        throw new NotImplementedException("Not supported in DatabaseJobReader!");
-    }
+//
+//    @Override
+//    public WorkloadReader setPredicate(Predicate<Cloudlet> predicate) {
+//        throw new NotImplementedException("Not supported in DatabaseJobReader!");
+//    }
 }

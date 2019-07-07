@@ -1,6 +1,5 @@
 package pl.edu.agh.csg;
 
-import org.cloudbus.cloudsim.util.Log;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import py4j.CallbackClient;
@@ -14,8 +13,7 @@ public class Main {
     private static final Logger cloudSimLogger = LoggerFactory.getLogger("CLOUDSIM");
 
     public static void main(String[] args) throws Exception {
-        Log.setOutput(new LogOutputStream(cloudSimLogger));
-        SimulationEnvironment simulationEnvironment = new SimulationEnvironment();
+        MultiSimulationEnvironment simulationEnvironment = new MultiSimulationEnvironment();
         InetAddress all = InetAddress.getByName("0.0.0.0");
         GatewayServer gatewayServer = new GatewayServer(
                 simulationEnvironment,
