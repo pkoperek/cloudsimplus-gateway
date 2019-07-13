@@ -1,5 +1,10 @@
 package pl.edu.agh.csg;
 
+import org.cloudbus.cloudsim.cloudlets.Cloudlet;
+import org.cloudbus.cloudsim.cloudlets.CloudletSimple;
+import org.cloudbus.cloudsim.util.DataCloudTags;
+import org.cloudbus.cloudsim.utilizationmodels.UtilizationModelFull;
+
 import java.util.Objects;
 
 public class CloudletDescriptor {
@@ -55,5 +60,14 @@ public class CloudletDescriptor {
                 ", mi=" + mi +
                 ", numberOfCores=" + numberOfCores +
                 '}';
+    }
+
+    public Cloudlet toCloudlet() {
+        Cloudlet cloudlet = new CloudletSimple(jobId, mi, numberOfCores)
+                .setFileSize(DataCloudTags.DEFAULT_MTU)
+                .setOutputSize(DataCloudTags.DEFAULT_MTU)
+                .setUtilizationModel(new UtilizationModelFull());
+        cloudlet.setSubmissionDelay(submissionDelay);
+        return cloudlet;
     }
 }
