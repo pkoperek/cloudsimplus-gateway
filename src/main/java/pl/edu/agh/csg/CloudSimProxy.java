@@ -42,7 +42,6 @@ public class CloudSimProxy {
         this.broker = createDatacenterBroker();
         this.datacenter = createDatacenter();
         this.vmCost = new VmCost(settings.getVmRunningHourlyCost());
-        this.cloudSim.startSync();
 
         this.nextVmId = 0;
         final List<? extends Vm> vmList = createVmList(initialVmCount);
@@ -50,6 +49,8 @@ public class CloudSimProxy {
 
         jobs.forEach(c -> originalSubmissionDelay.put(c.getId(), c.getSubmissionDelay()));
         broker.submitCloudletList(jobs);
+
+        this.cloudSim.startSync();
     }
 
     private Datacenter createDatacenter() {
@@ -115,7 +116,7 @@ public class CloudSimProxy {
     }
 
     public boolean isRunning() {
-        return false;
+        return cloudSim.isRunning();
     }
 
     public double getNumberOfActiveVMs() {
