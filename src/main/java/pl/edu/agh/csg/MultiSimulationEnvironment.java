@@ -52,6 +52,12 @@ public class MultiSimulationEnvironment {
         return simulation.render();
     }
 
+    public SimulationStepResult step(String simulationIdentifier, int action) {
+        validateIdentifier(simulationIdentifier);
+        final WrappedSimulation simulation = simulations.get(simulationIdentifier);
+        return simulation.step(action);
+    }
+
     public long ping() {
         logger.info("pong");
 
