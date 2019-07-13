@@ -1,15 +1,20 @@
 package pl.edu.agh.csg;
 
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import org.cloudbus.cloudsim.cloudlets.Cloudlet;
 import org.cloudbus.cloudsim.cloudlets.CloudletSimple;
 import org.cloudbus.cloudsim.util.DataCloudTags;
 import org.cloudbus.cloudsim.utilizationmodels.UtilizationModelFull;
 
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 public class SimulationFactory {
+
+    private static final Type cloudletDescriptors = new TypeToken<List<CloudletDescriptor>>() {}.getType();
 
     public static final String INITIAL_VM_COUNT = "INITIAL_VM_COUNT";
     public static final String INITIAL_VM_COUNT_DEFAULT = "10";
@@ -20,6 +25,8 @@ public class SimulationFactory {
     public static final String SOURCE_OF_JOBS_DATABASE = "DB";
     public static final String SOURCE_OF_JOBS = "SOURCE_OF_JOBS";
     public static final String SOURCE_OF_JOBS_DEFAULT = SOURCE_OF_JOBS_PARAMS;
+
+    private static final Gson gson = new Gson();
 
     private int created = 0;
 
@@ -35,7 +42,7 @@ public class SimulationFactory {
 
         final List<Cloudlet> jobs;
 
-        switch(sourceOfJobs) {
+        switch (sourceOfJobs) {
             case SOURCE_OF_JOBS_DATABASE:
                 jobs = loadJobsFromDatabase(maybeParameters);
                 break;
@@ -52,9 +59,16 @@ public class SimulationFactory {
     }
 
     private List<Cloudlet> loadJobsFromParams(Map<String, String> maybeParameters) {
-        maybeParameters.get(SOURCE_OF_JOBS_PARAMS_JOBS);
+        List<Cloudlet> retVal = new ArrayList<>();
+        final String jobsAsJson = maybeParameters.get(SOURCE_OF_JOBS_PARAMS_JOBS);
 
-        return null;
+        final List<CloudletDescriptor> deserialized = gson.fromJson(jobsAsJson, cloudletDescriptors);
+
+        for(CloudletDescriptor cloudletDescriptor : deserialized) {
+            retVal.add(cloudletDescriptor.toCloudlet());
+        }
+
+        return retVal;
     }
 
     private List<Cloudlet> loadJobsFromDatabase(Map<String, String> maybeParameters) {
@@ -65,12 +79,4 @@ public class SimulationFactory {
         return null;
     }
 
-    private Cloudlet createCloudlet(int jobId, long submissionDelay, long mi, int numberOfCores) {
-        Cloudlet cloudlet = new CloudletSimple(jobId, mi, numberOfCores)
-                .setFileSize(DataCloudTags.DEFAULT_MTU)
-                .setOutputSize(DataCloudTags.DEFAULT_MTU)
-                .setUtilizationModel(new UtilizationModelFull());
-        cloudlet.setSubmissionDelay(submissionDelay);
-        return cloudlet;
-    }
 }
