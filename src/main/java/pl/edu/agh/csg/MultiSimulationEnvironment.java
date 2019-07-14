@@ -24,9 +24,7 @@ public class MultiSimulationEnvironment {
     }
 
     public void reset(String simulationIdentifier) {
-        validateIdentifier(simulationIdentifier);
-
-        final WrappedSimulation simulation = simulations.get(simulationIdentifier);
+        final WrappedSimulation simulation = retrieveValidSimulation(simulationIdentifier);
         simulation.reset();
     }
 
@@ -45,16 +43,13 @@ public class MultiSimulationEnvironment {
     }
 
     public String render(String simulationIdentifier) {
-        validateIdentifier(simulationIdentifier);
-
-        final WrappedSimulation simulation = simulations.get(simulationIdentifier);
+        final WrappedSimulation simulation = retrieveValidSimulation(simulationIdentifier);
 
         return simulation.render();
     }
 
     public SimulationStepResult step(String simulationIdentifier, int action) {
-        validateIdentifier(simulationIdentifier);
-        final WrappedSimulation simulation = simulations.get(simulationIdentifier);
+        final WrappedSimulation simulation = retrieveValidSimulation(simulationIdentifier);
         return simulation.step(action);
     }
 
@@ -65,11 +60,20 @@ public class MultiSimulationEnvironment {
     }
 
     public void seed(String simulationIdentifier) {
-        validateIdentifier(simulationIdentifier);
-
-        final WrappedSimulation simulation = simulations.get(simulationIdentifier);
+        final WrappedSimulation simulation = retrieveValidSimulation(simulationIdentifier);
 
         simulation.seed();
     }
 
+    public double clock(String simulationIdentifier) {
+        final WrappedSimulation simulation = retrieveValidSimulation(simulationIdentifier);
+
+        return simulation.clock();
+    }
+
+    private WrappedSimulation retrieveValidSimulation(String simulationIdentifier) {
+        validateIdentifier(simulationIdentifier);
+
+        return simulations.get(simulationIdentifier);
+    }
 }
