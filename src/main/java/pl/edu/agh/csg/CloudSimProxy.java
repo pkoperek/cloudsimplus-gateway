@@ -6,6 +6,7 @@ import org.cloudbus.cloudsim.brokers.DatacenterBroker;
 import org.cloudbus.cloudsim.brokers.DatacenterBrokerSimple;
 import org.cloudbus.cloudsim.cloudlets.Cloudlet;
 import org.cloudbus.cloudsim.core.CloudSim;
+import org.cloudbus.cloudsim.core.CloudSimTags;
 import org.cloudbus.cloudsim.datacenters.Datacenter;
 import org.cloudbus.cloudsim.datacenters.DatacenterSimple;
 import org.cloudbus.cloudsim.hosts.Host;
@@ -38,7 +39,7 @@ public class CloudSimProxy {
 
     public CloudSimProxy(SimulationSettings settings, int initialVmCount, List<Cloudlet> jobs) {
         this.settings = settings;
-        this.cloudSim = new CloudSim();
+        this.cloudSim = new CloudSim(0.1);
         this.broker = createDatacenterBroker();
         this.datacenter = createDatacenter();
         this.vmCost = new VmCost(settings.getVmRunningHourlyCost());
@@ -71,7 +72,8 @@ public class CloudSimProxy {
             hostList.add(host);
         }
 
-        return new DatacenterSimple(cloudSim, hostList, new VmAllocationPolicySimple());
+        final DatacenterSimple datacenterSimple = new DatacenterSimple(cloudSim, hostList, new VmAllocationPolicySimple());
+        return datacenterSimple;
     }
 
     private List<? extends Vm> createVmList(int vmCount) {
@@ -92,7 +94,7 @@ public class CloudSimProxy {
                 .setRam(settings.getHostRam())
                 .setBw(settings.getHostBw())
                 .setSize(settings.getHostSize())
-                .setCloudletScheduler(new CloudletSchedulerSpaceShared());
+                .setCloudletScheduler(new CloudletScheduler());
         vmCost.notifyCreateVM(vm, this.cloudSim.clock());
         return vm;
     }
@@ -111,8 +113,21 @@ public class CloudSimProxy {
         return new DatacenterBrokerSimple(cloudSim);
     }
 
-    public void runFor(double interval) {
-        this.cloudSim.runFor(interval);
+    public void runFor(final double interval) {
+        final double target = this.cloudSim.clock() + interval;
+        int i = 0;
+
+        double adjustedInterval = interval;
+        while(this.cloudSim.runFor(adjustedInterval) < target) {
+            adjustedInterval = target - this.cloudSim.clock();
+            adjustedInterval = adjustedInterval <= 0 ? cloudSim.getMinTimeBetweenEvents() : adjustedInterval;
+
+            // Force stop if something runs out of control
+            if(i >= 1000) {
+                throw new RuntimeException("Breaking a really long loop in runFor!");
+            }
+            i++;
+        }
     }
 
     public boolean isRunning() {
@@ -157,6 +172,7 @@ public class CloudSimProxy {
         double delay = this.cloudSim.clock() + 45 + Math.random() * 52;
         newVm.setSubmissionDelay(delay);
 
+        broker.submitVm(newVm);
         logger.debug("VM creating requested, delay: " + delay);
     }
 
@@ -191,6 +207,27 @@ public class CloudSimProxy {
             broker.submitCloudletList(affectedCloudlets);
         } else {
             logger.debug("Can't kill a VM - only one running");
+        }
+    }
+
+    public double clock() {
+        return this.cloudSim.clock();
+    }
+
+    class CloudletScheduler extends CloudletSchedulerSpaceShared {
+        @Override
+        public double updateProcessing(double currentTime, List<Double> mipsShare) {
+            final int sizeBefore = this.getCloudletWaitingList().size();
+            final double nextSimulationTime = super.updateProcessing(currentTime, mipsShare);
+            final int sizeAfter = this.getCloudletWaitingList().size();
+
+            // if we have a new cloudlet being processed, schedule another recalculation, which should trigger a proper
+            // estimation of end time
+            if(sizeAfter != sizeBefore && Double.MAX_VALUE == nextSimulationTime) {
+                return this.getVm().getSimulation().getMinTimeBetweenEvents();
+            }
+
+            return nextSimulationTime;
         }
     }
 }
