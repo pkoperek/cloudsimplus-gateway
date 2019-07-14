@@ -102,6 +102,14 @@ public class WrappedSimulation {
         }
     }
 
+    private double percentileWithDefault(double[] values, double percentile, double defaultValue) {
+        if(values.length == 0) {
+            return defaultValue;
+        }
+
+        return percentile(values, percentile);
+    }
+
     private void collectMetrics() {
         final double[] latencies = cloudSimProxy.getWaitTimesFromLastInterval();
         Arrays.sort(latencies);
@@ -112,10 +120,10 @@ public class WrappedSimulation {
         double totalLatency = DoubleStream.of(latencies).sum();
 
         metricsStorage.updateMetric("vmCountHistory", cloudSimProxy.getNumberOfActiveVMs());
-        metricsStorage.updateMetric("p99LatencyHistory", percentile(latencies, 0.99));
-        metricsStorage.updateMetric("p90LatencyHistory", percentile(latencies, 0.90));
+        metricsStorage.updateMetric("p99LatencyHistory", percentileWithDefault(latencies, 0.99, 0));
+        metricsStorage.updateMetric("p90LatencyHistory", percentileWithDefault(latencies, 0.90, 0));
         metricsStorage.updateMetric("avgCPUUtilizationHistory", safeMean(cpuPercentUsage));
-        metricsStorage.updateMetric("p90CPUUtilizationHistory", percentile(cpuPercentUsage, 0.90));
+        metricsStorage.updateMetric("p90CPUUtilizationHistory", percentileWithDefault(cpuPercentUsage, 0.90, 0));
         metricsStorage.updateMetric("totalLatencyHistory", totalLatency);
     }
 
@@ -151,4 +159,7 @@ public class WrappedSimulation {
         // there is no randomness so far...
     }
 
+    public double clock() {
+        return cloudSimProxy.clock();
+    }
 }
