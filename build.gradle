@@ -35,7 +35,7 @@ targetCompatibility = 1.8
 dependencies {
     // The production code uses the SLF4J logging API at compile time
     compile 'org.slf4j:slf4j-api:1.7.21'
-    compile 'org.cloudsimplus:cloudsim-plus:5.0.0'
+    compile 'org.cloudsimplus:cloudsim-plus:5.0.4'
     compile group: 'net.sf.py4j', name: 'py4j', version: '0.10.7'
     compile group: "ch.qos.logback", name: "logback-classic", version: "1.2.3"
     compile group: 'org.apache.commons', name: 'commons-collections4', version: '4.0'
