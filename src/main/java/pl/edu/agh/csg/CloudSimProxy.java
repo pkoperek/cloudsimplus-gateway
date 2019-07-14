@@ -199,6 +199,9 @@ public class CloudSimProxy {
 
                 if (submissionDelay < currentClock) {
                     submissionDelay = currentClock + 1.0;
+                } else {
+                    // if we the Cloudlet still hasn't been started, let it start at the scheduled time.
+                    submissionDelay -= currentClock;
                 }
 
                 cloudlet.setSubmissionDelay(submissionDelay);
