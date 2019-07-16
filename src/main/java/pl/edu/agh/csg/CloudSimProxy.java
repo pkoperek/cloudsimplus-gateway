@@ -36,8 +36,10 @@ public class CloudSimProxy {
     private int nextVmId;
     private final Map<Long, Double> originalSubmissionDelay = new HashMap<>();
     private final Random random = new Random(System.currentTimeMillis());
+    private final List<Cloudlet> jobs = new ArrayList<>();
+    private int toAddJobId = 0;
 
-    public CloudSimProxy(SimulationSettings settings, int initialVmCount, List<Cloudlet> jobs) {
+    public CloudSimProxy(SimulationSettings settings, int initialVmCount, List<Cloudlet> inputJobs) {
         this.settings = settings;
         this.cloudSim = new CloudSim(0.1);
         this.broker = createDatacenterBroker();
@@ -48,9 +50,22 @@ public class CloudSimProxy {
         final List<? extends Vm> vmList = createVmList(initialVmCount);
         broker.submitVmList(vmList);
 
-        jobs.forEach(c -> originalSubmissionDelay.put(c.getId(), c.getSubmissionDelay()));
-        broker.submitCloudletList(jobs);
+        this.jobs.addAll(inputJobs);
+        Collections.sort(this.jobs, new DelayCloudletComparator());
+        this.jobs.forEach(c -> originalSubmissionDelay.put(c.getId(), c.getSubmissionDelay()));
 
+        // a second after every cloudlet will be submitted we add an event - this should prevent
+        // the simulation from ending while we have some jobs to schedule
+        this.jobs.forEach(c ->
+                this.cloudSim.send(
+                        datacenter,
+                        datacenter,
+                        c.getSubmissionDelay() + 1.0,
+                        CloudSimTags.VM_UPDATE_CLOUDLET_PROCESSING,
+                        null
+                )
+        );
+        ;
         this.cloudSim.startSync();
     }
 
@@ -108,18 +123,20 @@ public class CloudSimProxy {
         return peList;
     }
 
-
     private DatacenterBrokerSimple createDatacenterBroker() {
         return new DatacenterBrokerSimple(cloudSim);
     }
 
     public void runFor(final double interval) {
-        final double target = this.cloudSim.clock() + interval;
-        int i = 0;
+        final double clock = this.cloudSim.clock();
+        final double target = clock + interval;
 
+        scheduleJobsUntil(target);
+
+        int i = 0;
         double adjustedInterval = interval;
         while(this.cloudSim.runFor(adjustedInterval) < target) {
-            adjustedInterval = target - this.cloudSim.clock();
+            adjustedInterval = target - clock;
             adjustedInterval = adjustedInterval <= 0 ? cloudSim.getMinTimeBetweenEvents() : adjustedInterval;
 
             // Force stop if something runs out of control
@@ -127,6 +144,23 @@ public class CloudSimProxy {
                 throw new RuntimeException("Breaking a really long loop in runFor!");
             }
             i++;
+        }
+    }
+
+    private void scheduleJobsUntil(double target) {
+        List<Cloudlet> jobsToSubmit = new ArrayList<>();
+        while (toAddJobId < this.jobs.size() && this.jobs.get(toAddJobId).getSubmissionDelay() <= target) {
+            // we process every cloudlet only once here...
+            final Cloudlet cloudlet = this.jobs.get(toAddJobId);
+
+            // the job shold enter the cluster once target is crossed
+            cloudlet.setSubmissionDelay(1.0);
+            jobsToSubmit.add(cloudlet);
+            toAddJobId++;
+        }
+
+        if (jobsToSubmit.size() > 0) {
+            broker.submitCloudletList(jobsToSubmit);
         }
     }
 
@@ -231,6 +265,22 @@ public class CloudSimProxy {
             }
 
             return nextSimulationTime;
+        }
+    }
+
+    class DelayCloudletComparator implements Comparator<Cloudlet> {
+
+        @Override
+        public int compare(Cloudlet left, Cloudlet right) {
+            final double diff = left.getSubmissionDelay() - right.getSubmissionDelay();
+            if(diff < 0) {
+                return -1;
+            }
+
+            if (diff > 0) {
+                return 1;
+            }
+            return 0;
         }
     }
 }
