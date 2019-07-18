@@ -3,7 +3,6 @@ package pl.edu.agh.csg;
 import static org.junit.Assert.*;
 
 import com.google.gson.Gson;
-import org.cloudbus.cloudsim.cloudlets.Cloudlet;
 import org.junit.Test;
 
 import java.util.*;
@@ -129,8 +128,4 @@ public class IntegrationTest {
         multiSimulationEnvironment.close(simulationId);
     }
 
-    @Test
-    public void testOfMetrics() {
-        fail("implement me");
-    }
 }
