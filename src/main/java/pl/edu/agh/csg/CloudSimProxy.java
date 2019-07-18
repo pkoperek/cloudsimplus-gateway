@@ -37,6 +37,8 @@ public class CloudSimProxy {
     private final Map<Long, Double> originalSubmissionDelay = new HashMap<>();
     private final Random random = new Random(System.currentTimeMillis());
     private final List<Cloudlet> jobs = new ArrayList<>();
+    private final List<Cloudlet> potentiallyWaitingJobs = new ArrayList<>(1024);
+    private final List<Cloudlet> alreadyStarted = new ArrayList<>(128);
     private int toAddJobId = 0;
 
     public CloudSimProxy(SimulationSettings settings, int initialVmCount, List<Cloudlet> inputJobs) {
@@ -65,7 +67,7 @@ public class CloudSimProxy {
                         null
                 )
         );
-        ;
+
         this.cloudSim.startSync();
     }
 
@@ -145,6 +147,14 @@ public class CloudSimProxy {
             }
             i++;
         }
+
+        alreadyStarted.clear();
+        for(Cloudlet job : potentiallyWaitingJobs) {
+            if(job.getStatus() == Cloudlet.Status.INEXEC || job.getStatus() == Cloudlet.Status.SUCCESS || job.getStatus() == Cloudlet.Status.CANCELED) {
+                alreadyStarted.add(job);
+            }
+        }
+        potentiallyWaitingJobs.removeAll(alreadyStarted);
     }
 
     private void scheduleJobsUntil(double target) {
@@ -161,6 +171,7 @@ public class CloudSimProxy {
 
         if (jobsToSubmit.size() > 0) {
             broker.submitCloudletList(jobsToSubmit);
+            potentiallyWaitingJobs.addAll(jobsToSubmit);
         }
     }
 
@@ -185,15 +196,11 @@ public class CloudSimProxy {
     }
 
     public double[] getWaitTimesFromLastInterval() {
-        double cutOffTime = Math.floor(cloudSim.clock() - 1.0);
         List<Double> waitingTimes = new ArrayList<>();
-        for (Cloudlet cloudlet : broker.getCloudletFinishedList()) {
-            if (cloudlet.getFinishTime() > cutOffTime) {
-                double systemEntryTime = this.originalSubmissionDelay.get(cloudlet.getId());
-                // systemEntryTime should be always less than exec start time
-                double realWaitingTime = cloudlet.getExecStartTime() - systemEntryTime;
-                waitingTimes.add(realWaitingTime);
-            }
+        for (Cloudlet cloudlet : this.potentiallyWaitingJobs) {
+            double systemEntryTime = this.originalSubmissionDelay.get(cloudlet.getId());
+            double realWaitingTime = cloudSim.clock() - systemEntryTime;
+            waitingTimes.add(realWaitingTime);
         }
 
         return ArrayUtils.toPrimitive(waitingTimes.toArray(double_arr));
