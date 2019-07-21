@@ -13,9 +13,9 @@ apply plugin: 'idea'
 apply plugin: 'com.bmuschko.docker-java-application'
 
 buildscript {
-    repositories { jcenter() }
+    repositories { gradlePluginPortal() }
     dependencies {
-        classpath 'com.bmuschko:gradle-docker-plugin:2.2'
+        classpath 'com.bmuschko:gradle-docker-plugin:4.10.0'
     }
 }
 
@@ -50,8 +50,8 @@ docker {
     javaApplication {
         baseImage = 'openjdk:11-jre'
         maintainer = 'Pawel Koperek "pkoperek@gmail.com""'
-        port = 25333
-        tag = 'pkoperek/cloudsimplus-gateway:1.0'
+        ports = [25333]
+        tag = 'pkoperek/cloudsimplus-gateway:1.1'
     }
 }
 

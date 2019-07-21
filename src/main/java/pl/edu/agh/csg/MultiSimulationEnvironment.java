@@ -23,9 +23,9 @@ public class MultiSimulationEnvironment {
         return identifier;
     }
 
-    public void reset(String simulationIdentifier) {
+    public ResetResult reset(String simulationIdentifier) {
         final WrappedSimulation simulation = retrieveValidSimulation(simulationIdentifier);
-        simulation.reset();
+        return simulation.reset();
     }
 
     private void validateIdentifier(String simulationIdentifier) {

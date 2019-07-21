@@ -17,7 +17,7 @@ public class WrappedSimulation {
     private static final Logger logger = LoggerFactory.getLogger(WrappedSimulation.class.getName());
     private static final int HISTORY_LENGTH = 30 * 60; // 30 minutes * 60s
 
-    private final CloudSimProxy cloudSimProxy;
+    private final List<Cloudlet> initialJobs;
 
     private List<String> metricsNames = Arrays.asList(
             "vmCountHistory",
@@ -28,28 +28,31 @@ public class WrappedSimulation {
             "totalLatencyHistory"
     );
 
-    private MetricsStorage metricsStorage = new MetricsStorage(HISTORY_LENGTH, metricsNames);
-
+    private final MetricsStorage metricsStorage = new MetricsStorage(HISTORY_LENGTH, metricsNames);
     private final Gson gson = new Gson();
     private final double INTERVAL = 1.0;
     private final String identifier;
     private final int initialVmsCount;
     private final SimulationSettings settings = new SimulationSettings();
+    private CloudSimProxy cloudSimProxy;
 
     public WrappedSimulation(String identifier, int initialVmsCount, List<Cloudlet> jobs) {
         this.identifier = identifier;
         this.initialVmsCount = initialVmsCount;
+        this.initialJobs = jobs;
 
-        cloudSimProxy = new CloudSimProxy(settings, initialVmsCount, jobs);
+        reset();
     }
-
 
     public String getIdentifier() {
         return identifier;
     }
 
-    public void reset() {
+    public ResetResult reset() {
+        cloudSimProxy = new CloudSimProxy(settings, initialVmsCount, initialJobs);
         metricsStorage.clear();
+
+        return new ResetResult(getObservation());
     }
 
     public void close() {
