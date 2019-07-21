@@ -41,7 +41,15 @@ public class WrappedSimulation {
         this.initialVmsCount = initialVmsCount;
         this.initialJobs = jobs;
 
-        reset();
+        info("Creating simulation: " + identifier);
+    }
+
+    private void info(String message) {
+        logger.info(getIdentifier() + " " + message);
+    }
+
+    private void debug(String message) {
+        logger.debug(getIdentifier() + " " + message);
     }
 
     public String getIdentifier() {
@@ -49,14 +57,16 @@ public class WrappedSimulation {
     }
 
     public ResetResult reset() {
+        debug("Reset initiated");
         cloudSimProxy = new CloudSimProxy(settings, initialVmsCount, initialJobs);
         metricsStorage.clear();
 
-        return new ResetResult(getObservation());
+        double[] obs = getObservation();
+        return new ResetResult(obs);
     }
 
     public void close() {
-        logger.info("Simulation is synchronous - doing nothing");
+        info("Simulation is synchronous - doing nothing");
     }
 
     public String render() {
@@ -72,6 +82,7 @@ public class WrappedSimulation {
     }
 
     public SimulationStepResult step(int action) {
+        debug("Executing action: " + action);
         executeAction(action);
         cloudSimProxy.runFor(INTERVAL);
         collectMetrics();
@@ -80,7 +91,7 @@ public class WrappedSimulation {
         double[] observation = getObservation();
         double reward = calculateReward();
 
-        logger.debug("Step finished (action: " + action + ") is done: " + done);
+        debug("Step finished (action: " + action + ") is done: " + done);
 
         return new SimulationStepResult(
                 done,
