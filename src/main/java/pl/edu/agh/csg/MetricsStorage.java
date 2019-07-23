@@ -30,8 +30,7 @@ public class MetricsStorage {
 
     private void ensureMetricQueuesExist() {
         for(String metricName : this.trackedMetrics) {
-            final CircularFifoQueue<Double> metricQueue = new CircularFifoQueue<>();
-            data.put(metricName, metricQueue);
+            data.put(metricName, new CircularFifoQueue<>(this.historyLength));
         }
     }
 

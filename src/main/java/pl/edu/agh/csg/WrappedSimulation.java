@@ -78,6 +78,7 @@ public class WrappedSimulation {
                 metricsStorage.metricValuesAsPrimitives("p90CPUUtilizationHistory"),
                 metricsStorage.metricValuesAsPrimitives("totalLatencyHistory")
         };
+
         return gson.toJson(renderedEnv);
     }
 
