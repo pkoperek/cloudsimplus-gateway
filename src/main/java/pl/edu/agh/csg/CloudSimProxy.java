@@ -69,6 +69,7 @@ public class CloudSimProxy {
         );
 
         this.cloudSim.startSync();
+        this.runFor(0.1);
     }
 
     private Datacenter createDatacenter() {
