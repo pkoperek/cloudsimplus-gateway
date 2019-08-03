@@ -2,10 +2,8 @@ package pl.edu.agh.csg;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+import org.apache.commons.lang3.NotImplementedException;
 import org.cloudbus.cloudsim.cloudlets.Cloudlet;
-import org.cloudbus.cloudsim.cloudlets.CloudletSimple;
-import org.cloudbus.cloudsim.util.DataCloudTags;
-import org.cloudbus.cloudsim.utilizationmodels.UtilizationModelFull;
 
 import java.lang.reflect.Type;
 import java.util.ArrayList;
@@ -72,11 +70,11 @@ public class SimulationFactory {
     }
 
     private List<Cloudlet> loadJobsFromDatabase(Map<String, String> maybeParameters) {
-        return null;
+        throw new NotImplementedException("Feature not implemented yet!");
     }
 
     private List<Cloudlet> loadJobsFromFile(Map<String, String> maybeParameters) {
-        return null;
+        throw new NotImplementedException("Feature not implemented yet!");
     }
 
 }
