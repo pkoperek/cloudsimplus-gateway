@@ -92,7 +92,8 @@ public class WrappedSimulation {
         double[] observation = getObservation();
         double reward = calculateReward();
 
-        debug("Step finished (action: " + action + ") is done: " + done);
+        debug("Step finished (action: " + action + ") is done: " + done +
+                " Length of future events queue: " + cloudSimProxy.getNumberOfFutureEvents());
 
         return new SimulationStepResult(
                 done,
@@ -118,7 +119,7 @@ public class WrappedSimulation {
     }
 
     private double percentileWithDefault(double[] values, double percentile, double defaultValue) {
-        if(values.length == 0) {
+        if (values.length == 0) {
             return defaultValue;
         }
 
