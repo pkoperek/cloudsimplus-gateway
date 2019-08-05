@@ -4,6 +4,8 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import org.apache.commons.lang3.NotImplementedException;
 import org.cloudbus.cloudsim.cloudlets.Cloudlet;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Type;
 import java.util.ArrayList;
@@ -12,6 +14,7 @@ import java.util.Map;
 
 public class SimulationFactory {
 
+    private static final Logger logger = LoggerFactory.getLogger(SimulationFactory.class.getName());
     private static final Type cloudletDescriptors = new TypeToken<List<CloudletDescriptor>>() {}.getType();
 
     public static final String INITIAL_VM_COUNT = "INITIAL_VM_COUNT";
@@ -65,6 +68,8 @@ public class SimulationFactory {
         for(CloudletDescriptor cloudletDescriptor : deserialized) {
             retVal.add(cloudletDescriptor.toCloudlet());
         }
+
+        logger.info("Deserialized " + retVal.size() + " jobs");
 
         return retVal;
     }
