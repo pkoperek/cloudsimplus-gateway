@@ -7,6 +7,7 @@ import org.cloudbus.cloudsim.brokers.DatacenterBrokerSimple;
 import org.cloudbus.cloudsim.cloudlets.Cloudlet;
 import org.cloudbus.cloudsim.core.CloudSim;
 import org.cloudbus.cloudsim.core.CloudSimTags;
+import org.cloudbus.cloudsim.core.events.SimEvent;
 import org.cloudbus.cloudsim.datacenters.Datacenter;
 import org.cloudbus.cloudsim.datacenters.DatacenterSimple;
 import org.cloudbus.cloudsim.hosts.Host;
@@ -23,6 +24,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
+import java.util.function.Predicate;
 
 public class CloudSimProxy {
 
@@ -138,24 +140,55 @@ public class CloudSimProxy {
 
         int i = 0;
         double adjustedInterval = interval;
-        while(this.cloudSim.runFor(adjustedInterval) < target) {
+        while (this.cloudSim.runFor(adjustedInterval) < target) {
             adjustedInterval = target - clock;
             adjustedInterval = adjustedInterval <= 0 ? cloudSim.getMinTimeBetweenEvents() : adjustedInterval;
 
             // Force stop if something runs out of control
-            if(i >= 1000) {
+            if (i >= 1000) {
                 throw new RuntimeException("Breaking a really long loop in runFor!");
             }
             i++;
         }
 
         alreadyStarted.clear();
-        for(Cloudlet job : potentiallyWaitingJobs) {
-            if(job.getStatus() == Cloudlet.Status.INEXEC || job.getStatus() == Cloudlet.Status.SUCCESS || job.getStatus() == Cloudlet.Status.CANCELED) {
+        for (Cloudlet job : potentiallyWaitingJobs) {
+            if (job.getStatus() == Cloudlet.Status.INEXEC || job.getStatus() == Cloudlet.Status.SUCCESS || job.getStatus() == Cloudlet.Status.CANCELED) {
                 alreadyStarted.add(job);
             }
         }
         potentiallyWaitingJobs.removeAll(alreadyStarted);
+
+        cancelInvalidEvents();
+    }
+
+    private void cancelInvalidEvents() {
+        final long clock = (long) cloudSim.clock();
+
+        if(clock % 100 == 0) {
+            logger.warn("Cleaning up events (before): " + getNumberOfFutureEvents());
+            cloudSim.cancelAll(datacenter, new Predicate<SimEvent>() {
+
+                private SimEvent previous;
+
+                @Override
+                public boolean test(SimEvent current) {
+                    // remove dupes
+                    if (previous != null &&
+                            current.getTag() == CloudSimTags.VM_UPDATE_CLOUDLET_PROCESSING &&
+                            current.getSource() == datacenter &&
+                            current.getDestination() == datacenter &&
+                            previous.getTime() == current.getTime()
+                    ) {
+                        return true;
+                    }
+
+                    previous = current;
+                    return false;
+                }
+            });
+            logger.warn("Cleaning up events (after): " + getNumberOfFutureEvents());
+        }
     }
 
     private void scheduleJobsUntil(double target) {
@@ -240,7 +273,7 @@ public class CloudSimProxy {
                 }
 
                 if (submissionDelay < currentClock) {
-                    submissionDelay = currentClock + 1.0;
+                    submissionDelay = 1.0;
                 } else {
                     // if we the Cloudlet still hasn't been started, let it start at the scheduled time.
                     submissionDelay -= currentClock;
@@ -251,12 +284,16 @@ public class CloudSimProxy {
 
             broker.submitCloudletList(affectedCloudlets);
         } else {
-            logger.debug("Can't kill a VM - only one running");
+            logger.warn("Can't kill a VM - only one running");
         }
     }
 
     public double clock() {
         return this.cloudSim.clock();
+    }
+
+    public long getNumberOfFutureEvents() {
+        return this.cloudSim.getNumberOfFutureEvents(simEvent -> true);
     }
 
     class CloudletScheduler extends CloudletSchedulerSpaceShared {
@@ -268,7 +305,7 @@ public class CloudSimProxy {
 
             // if we have a new cloudlet being processed, schedule another recalculation, which should trigger a proper
             // estimation of end time
-            if(sizeAfter != sizeBefore && Double.MAX_VALUE == nextSimulationTime) {
+            if (sizeAfter != sizeBefore && Double.MAX_VALUE == nextSimulationTime) {
                 return this.getVm().getSimulation().getMinTimeBetweenEvents();
             }
 
@@ -281,7 +318,7 @@ public class CloudSimProxy {
         @Override
         public int compare(Cloudlet left, Cloudlet right) {
             final double diff = left.getSubmissionDelay() - right.getSubmissionDelay();
-            if(diff < 0) {
+            if (diff < 0) {
                 return -1;
             }
 
