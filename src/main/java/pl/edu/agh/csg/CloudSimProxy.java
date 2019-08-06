@@ -35,6 +35,7 @@ public class CloudSimProxy {
     private final SimulationSettings settings;
     private final VmCost vmCost;
     private final Datacenter datacenter;
+    private final double simulationSpeedUp;
     private int nextVmId;
     private final Map<Long, Double> originalSubmissionDelay = new HashMap<>();
     private final Random random = new Random(System.currentTimeMillis());
@@ -43,12 +44,13 @@ public class CloudSimProxy {
     private final List<Cloudlet> alreadyStarted = new ArrayList<>(128);
     private int toAddJobId = 0;
 
-    public CloudSimProxy(SimulationSettings settings, int initialVmCount, List<Cloudlet> inputJobs) {
+    public CloudSimProxy(SimulationSettings settings, int initialVmCount, List<Cloudlet> inputJobs, double simulationSpeedUp) {
         this.settings = settings;
         this.cloudSim = new CloudSim(0.1);
         this.broker = createDatacenterBroker();
         this.datacenter = createDatacenter();
         this.vmCost = new VmCost(settings.getVmRunningHourlyCost());
+        this.simulationSpeedUp = simulationSpeedUp;
 
         this.nextVmId = 0;
         final List<? extends Vm> vmList = createVmList(initialVmCount);
@@ -92,8 +94,7 @@ public class CloudSimProxy {
             hostList.add(host);
         }
 
-        final DatacenterSimple datacenterSimple = new DatacenterSimple(cloudSim, hostList, new VmAllocationPolicySimple());
-        return datacenterSimple;
+        return new DatacenterSimple(cloudSim, hostList, new VmAllocationPolicySimple());
     }
 
     private List<? extends Vm> createVmList(int vmCount) {
@@ -244,7 +245,7 @@ public class CloudSimProxy {
         // assuming average delay up to 97s as in 10.1109/CLOUD.2012.103
         // from anecdotal exp the startup time can be as fast as 45s
         Vm newVm = createVmWithId();
-        double delay = this.cloudSim.clock() + 45 + Math.random() * 52;
+        double delay = (45 + Math.random() * 52) / this.simulationSpeedUp;
         newVm.setSubmissionDelay(delay);
 
         broker.submitVm(newVm);

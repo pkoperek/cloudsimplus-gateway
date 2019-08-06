@@ -17,6 +17,9 @@ public class SimulationFactory {
     private static final Logger logger = LoggerFactory.getLogger(SimulationFactory.class.getName());
     private static final Type cloudletDescriptors = new TypeToken<List<CloudletDescriptor>>() {}.getType();
 
+    public static final String SIMULATION_SPEEDUP = "SIMULATION_SPEEDUP";
+    public static final String SIMULATION_SPEEDUP_DEFAULT = "1.0";
+
     public static final String INITIAL_VM_COUNT = "INITIAL_VM_COUNT";
     public static final String INITIAL_VM_COUNT_DEFAULT = "10";
 
@@ -34,10 +37,13 @@ public class SimulationFactory {
     public synchronized WrappedSimulation create(Map<String, String> maybeParameters) {
         String identifier = "Sim" + created;
         this.created++;
-        // get number of initial vms in
 
+        // get number of initial vms in
         final String initialVmCountStr = maybeParameters.getOrDefault(INITIAL_VM_COUNT, INITIAL_VM_COUNT_DEFAULT);
         final int initialVmCount = Integer.parseInt(initialVmCountStr);
+
+        final String simulationSpeedUpStr = maybeParameters.getOrDefault(SIMULATION_SPEEDUP, SIMULATION_SPEEDUP_DEFAULT);
+        final double simulationSpeedUp = Double.valueOf(simulationSpeedUpStr);
 
         final String sourceOfJobs = maybeParameters.getOrDefault(SOURCE_OF_JOBS, SOURCE_OF_JOBS_DEFAULT);
 
@@ -53,25 +59,37 @@ public class SimulationFactory {
             case SOURCE_OF_JOBS_PARAMS:
                 // fall-through
             default:
-                jobs = loadJobsFromParams(maybeParameters);
+                jobs = loadJobsFromParams(maybeParameters, simulationSpeedUp);
         }
 
-        return new WrappedSimulation(identifier, initialVmCount, jobs);
+        return new WrappedSimulation(identifier, initialVmCount, simulationSpeedUp, jobs);
     }
 
-    private List<Cloudlet> loadJobsFromParams(Map<String, String> maybeParameters) {
+    private List<Cloudlet> loadJobsFromParams(Map<String, String> maybeParameters, double simulationSpeedUp) {
         List<Cloudlet> retVal = new ArrayList<>();
         final String jobsAsJson = maybeParameters.get(SOURCE_OF_JOBS_PARAMS_JOBS);
 
         final List<CloudletDescriptor> deserialized = gson.fromJson(jobsAsJson, cloudletDescriptors);
 
-        for(CloudletDescriptor cloudletDescriptor : deserialized) {
-            retVal.add(cloudletDescriptor.toCloudlet());
+        for (CloudletDescriptor cloudletDescriptor : deserialized) {
+            retVal.add(speedUp(cloudletDescriptor, simulationSpeedUp).toCloudlet());
         }
 
         logger.info("Deserialized " + retVal.size() + " jobs");
 
         return retVal;
+    }
+
+    private CloudletDescriptor speedUp(CloudletDescriptor cloudletDescriptor, double simulationSpeedUp) {
+        final long newMi = (long) (cloudletDescriptor.getMi() / simulationSpeedUp);
+        final long mi = newMi == 0 ? 1 : newMi;
+        final long submissionDelay = (long) (cloudletDescriptor.getSubmissionDelay() / simulationSpeedUp);
+        return new CloudletDescriptor(
+                cloudletDescriptor.getJobId(),
+                submissionDelay,
+                mi,
+                cloudletDescriptor.getNumberOfCores()
+        );
     }
 
     private List<Cloudlet> loadJobsFromDatabase(Map<String, String> maybeParameters) {

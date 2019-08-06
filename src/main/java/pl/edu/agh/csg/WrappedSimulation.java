@@ -18,6 +18,7 @@ public class WrappedSimulation {
     private static final int HISTORY_LENGTH = 30 * 60; // 30 minutes * 60s
 
     private final List<Cloudlet> initialJobs;
+    private final double simulationSpeedUp;
 
     private List<String> metricsNames = Arrays.asList(
             "vmCountHistory",
@@ -36,10 +37,11 @@ public class WrappedSimulation {
     private final SimulationSettings settings = new SimulationSettings();
     private CloudSimProxy cloudSimProxy;
 
-    public WrappedSimulation(String identifier, int initialVmsCount, List<Cloudlet> jobs) {
+    public WrappedSimulation(String identifier, int initialVmsCount, double simulationSpeedUp, List<Cloudlet> jobs) {
         this.identifier = identifier;
         this.initialVmsCount = initialVmsCount;
         this.initialJobs = jobs;
+        this.simulationSpeedUp = simulationSpeedUp;
 
         info("Creating simulation: " + identifier);
     }
@@ -58,7 +60,7 @@ public class WrappedSimulation {
 
     public ResetResult reset() {
         debug("Reset initiated");
-        cloudSimProxy = new CloudSimProxy(settings, initialVmsCount, initialJobs);
+        cloudSimProxy = new CloudSimProxy(settings, initialVmsCount, initialJobs, simulationSpeedUp);
         metricsStorage.clear();
 
         double[] obs = getObservation();
