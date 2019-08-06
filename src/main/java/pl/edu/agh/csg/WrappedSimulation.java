@@ -17,6 +17,7 @@ public class WrappedSimulation {
 
     private static final Logger logger = LoggerFactory.getLogger(WrappedSimulation.class.getName());
     private static final int HISTORY_LENGTH = 30 * 60; // 30 minutes * 60s
+    private final double queueWaitPenalty;
 
     private final List<CloudletDescriptor> initialJobsDescriptors;
     private final double simulationSpeedUp;
@@ -38,11 +39,16 @@ public class WrappedSimulation {
     private final SimulationSettings settings = new SimulationSettings();
     private CloudSimProxy cloudSimProxy;
 
-    public WrappedSimulation(String identifier, int initialVmsCount, double simulationSpeedUp, List<CloudletDescriptor> jobs) {
+    public WrappedSimulation(String identifier,
+                             int initialVmsCount,
+                             double simulationSpeedUp,
+                             double queueWaitPenalty,
+                             List<CloudletDescriptor> jobs) {
         this.identifier = identifier;
         this.initialVmsCount = initialVmsCount;
         this.initialJobsDescriptors = jobs;
         this.simulationSpeedUp = simulationSpeedUp;
+        this.queueWaitPenalty = queueWaitPenalty;
 
         info("Creating simulation: " + identifier);
     }
@@ -176,7 +182,8 @@ public class WrappedSimulation {
 
     private double calculateReward() {
         // reward is the negative cost of running the infrastructure
-        return -cloudSimProxy.getRunningCost();
+        // - any penalties from jobs waiting in the queue
+        return -cloudSimProxy.getRunningCost() - this.cloudSimProxy.getWaitingJobsCount() * this.queueWaitPenalty;
     }
 
     public void seed() {

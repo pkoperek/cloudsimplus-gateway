@@ -17,6 +17,9 @@ public class SimulationFactory {
     private static final Logger logger = LoggerFactory.getLogger(SimulationFactory.class.getName());
     private static final Type cloudletDescriptors = new TypeToken<List<CloudletDescriptor>>() {}.getType();
 
+    public static final String QUEUE_WAIT_PENALTY = "QUEUE_WAIT_PENALTY";
+    public static final String QUEUE_WAIT_PENALTY_DEFAULT = "0.00001";
+
     public static final String SIMULATION_SPEEDUP = "SIMULATION_SPEEDUP";
     public static final String SIMULATION_SPEEDUP_DEFAULT = "1.0";
 
@@ -47,6 +50,9 @@ public class SimulationFactory {
 
         final String sourceOfJobs = maybeParameters.getOrDefault(SOURCE_OF_JOBS, SOURCE_OF_JOBS_DEFAULT);
 
+        final String queueWaitPenaltyStr = maybeParameters.getOrDefault(QUEUE_WAIT_PENALTY, QUEUE_WAIT_PENALTY_DEFAULT);
+        final double queueWaitPenalty = Double.valueOf(queueWaitPenaltyStr);
+
         final List<CloudletDescriptor> jobs;
 
         switch (sourceOfJobs) {
@@ -62,7 +68,7 @@ public class SimulationFactory {
                 jobs = loadJobsFromParams(maybeParameters, simulationSpeedUp);
         }
 
-        return new WrappedSimulation(identifier, initialVmCount, simulationSpeedUp, jobs);
+        return new WrappedSimulation(identifier, initialVmCount, simulationSpeedUp, queueWaitPenalty, jobs);
     }
 
     private List<CloudletDescriptor> loadJobsFromParams(Map<String, String> maybeParameters, double simulationSpeedUp) {

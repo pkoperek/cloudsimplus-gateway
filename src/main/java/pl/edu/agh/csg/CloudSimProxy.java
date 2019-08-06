@@ -297,6 +297,10 @@ public class CloudSimProxy {
         return this.cloudSim.getNumberOfFutureEvents(simEvent -> true);
     }
 
+    public int getWaitingJobsCount() {
+        return this.potentiallyWaitingJobs.size();
+    }
+
     public double getRunningCost() {
         return vmCost.getVMCostPerSecond(this.clock());
     }
