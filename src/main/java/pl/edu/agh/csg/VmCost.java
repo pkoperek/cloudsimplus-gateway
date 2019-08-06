@@ -7,16 +7,19 @@ import java.util.List;
 
 public class VmCost {
 
-    private final double SECONDS_IN_HOUR = 60 * 60;
+    private final double secondsInHour;
     private final double perSecondVMCost;
+    private final double speedUp;
     private List<Vm> createdVms = new ArrayList<>();
     private List<Vm> removedVms = new ArrayList<>();
 
     private final double perHourVMCost;
 
-    public VmCost(double perHourVMCost) {
+    public VmCost(double perHourVMCost, double speedUp) {
         this.perHourVMCost = perHourVMCost;
         this.perSecondVMCost = perHourVMCost * 0.00028; // 1/3600
+        this.speedUp = speedUp;
+        this.secondsInHour = 60 * 60 / this.speedUp;
     }
 
     public void notifyCreateVM(Vm vm, double clock) {
@@ -35,7 +38,7 @@ public class VmCost {
             if(vm.getStartTime() > -1) {
                 if(vm.getStopTime() > -1) {
                     // vm was stopped - we continue to pay for it within the last running hour
-                    if(clock <= vm.getStopTime() + SECONDS_IN_HOUR) {
+                    if(clock <= vm.getStopTime() + secondsInHour) {
                         totalCost += perSecondVMCost;
                     } else {
                         toRemove.add(vm);

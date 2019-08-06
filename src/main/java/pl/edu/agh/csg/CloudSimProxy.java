@@ -49,7 +49,7 @@ public class CloudSimProxy {
         this.cloudSim = new CloudSim(0.1);
         this.broker = createDatacenterBroker();
         this.datacenter = createDatacenter();
-        this.vmCost = new VmCost(settings.getVmRunningHourlyCost());
+        this.vmCost = new VmCost(settings.getVmRunningHourlyCost(), simulationSpeedUp);
         this.simulationSpeedUp = simulationSpeedUp;
 
         this.nextVmId = 0;
@@ -295,6 +295,10 @@ public class CloudSimProxy {
 
     public long getNumberOfFutureEvents() {
         return this.cloudSim.getNumberOfFutureEvents(simEvent -> true);
+    }
+
+    public double getRunningCost() {
+        return vmCost.getVMCostPerSecond(this.clock());
     }
 
     class CloudletScheduler extends CloudletSchedulerSpaceShared {

@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 import java.util.stream.DoubleStream;
 
 import static org.apache.commons.math3.stat.StatUtils.percentile;
@@ -17,7 +18,7 @@ public class WrappedSimulation {
     private static final Logger logger = LoggerFactory.getLogger(WrappedSimulation.class.getName());
     private static final int HISTORY_LENGTH = 30 * 60; // 30 minutes * 60s
 
-    private final List<Cloudlet> initialJobs;
+    private final List<CloudletDescriptor> initialJobsDescriptors;
     private final double simulationSpeedUp;
 
     private List<String> metricsNames = Arrays.asList(
@@ -37,10 +38,10 @@ public class WrappedSimulation {
     private final SimulationSettings settings = new SimulationSettings();
     private CloudSimProxy cloudSimProxy;
 
-    public WrappedSimulation(String identifier, int initialVmsCount, double simulationSpeedUp, List<Cloudlet> jobs) {
+    public WrappedSimulation(String identifier, int initialVmsCount, double simulationSpeedUp, List<CloudletDescriptor> jobs) {
         this.identifier = identifier;
         this.initialVmsCount = initialVmsCount;
-        this.initialJobs = jobs;
+        this.initialJobsDescriptors = jobs;
         this.simulationSpeedUp = simulationSpeedUp;
 
         info("Creating simulation: " + identifier);
@@ -60,7 +61,11 @@ public class WrappedSimulation {
 
     public ResetResult reset() {
         debug("Reset initiated");
-        cloudSimProxy = new CloudSimProxy(settings, initialVmsCount, initialJobs, simulationSpeedUp);
+        List<Cloudlet> cloudlets = initialJobsDescriptors
+                .stream()
+                .map(cloudletDescriptor -> cloudletDescriptor.toCloudlet())
+                .collect(Collectors.toList());
+        cloudSimProxy = new CloudSimProxy(settings, initialVmsCount, cloudlets, simulationSpeedUp);
         metricsStorage.clear();
 
         double[] obs = getObservation();
@@ -170,7 +175,8 @@ public class WrappedSimulation {
     }
 
     private double calculateReward() {
-        return 0;
+        // reward is the negative cost of running the infrastructure
+        return -cloudSimProxy.getRunningCost();
     }
 
     public void seed() {

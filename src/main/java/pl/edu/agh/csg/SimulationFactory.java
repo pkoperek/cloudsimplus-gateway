@@ -47,7 +47,7 @@ public class SimulationFactory {
 
         final String sourceOfJobs = maybeParameters.getOrDefault(SOURCE_OF_JOBS, SOURCE_OF_JOBS_DEFAULT);
 
-        final List<Cloudlet> jobs;
+        final List<CloudletDescriptor> jobs;
 
         switch (sourceOfJobs) {
             case SOURCE_OF_JOBS_DATABASE:
@@ -65,14 +65,14 @@ public class SimulationFactory {
         return new WrappedSimulation(identifier, initialVmCount, simulationSpeedUp, jobs);
     }
 
-    private List<Cloudlet> loadJobsFromParams(Map<String, String> maybeParameters, double simulationSpeedUp) {
-        List<Cloudlet> retVal = new ArrayList<>();
+    private List<CloudletDescriptor> loadJobsFromParams(Map<String, String> maybeParameters, double simulationSpeedUp) {
+        List<CloudletDescriptor> retVal = new ArrayList<>();
         final String jobsAsJson = maybeParameters.get(SOURCE_OF_JOBS_PARAMS_JOBS);
 
         final List<CloudletDescriptor> deserialized = gson.fromJson(jobsAsJson, cloudletDescriptors);
 
         for (CloudletDescriptor cloudletDescriptor : deserialized) {
-            retVal.add(speedUp(cloudletDescriptor, simulationSpeedUp).toCloudlet());
+            retVal.add(speedUp(cloudletDescriptor, simulationSpeedUp));
         }
 
         logger.info("Deserialized " + retVal.size() + " jobs");
@@ -92,11 +92,11 @@ public class SimulationFactory {
         );
     }
 
-    private List<Cloudlet> loadJobsFromDatabase(Map<String, String> maybeParameters) {
+    private List<CloudletDescriptor> loadJobsFromDatabase(Map<String, String> maybeParameters) {
         throw new NotImplementedException("Feature not implemented yet!");
     }
 
-    private List<Cloudlet> loadJobsFromFile(Map<String, String> maybeParameters) {
+    private List<CloudletDescriptor> loadJobsFromFile(Map<String, String> maybeParameters) {
         throw new NotImplementedException("Feature not implemented yet!");
     }
 
