@@ -16,7 +16,7 @@ public class VmCost {
     private final double perHourVMCost;
 
     public VmCost(double perHourVMCost, double speedUp) {
-        this.perHourVMCost = perHourVMCost;
+        this.perHourVMCost = perHourVMCost * speedUp;
         this.perSecondVMCost = perHourVMCost * 0.00028; // 1/3600
         this.speedUp = speedUp;
         this.secondsInHour = 60 * 60 / this.speedUp;

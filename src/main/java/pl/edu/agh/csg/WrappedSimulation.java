@@ -96,6 +96,10 @@ public class WrappedSimulation {
     }
 
     public SimulationStepResult step(int action) {
+        if(cloudSimProxy == null) {
+            throw new RuntimeException("Simulation not reset! Please call the reset() function!");
+        }
+
         debug("Executing action: " + action);
         executeAction(action);
         cloudSimProxy.runFor(INTERVAL);
@@ -183,7 +187,8 @@ public class WrappedSimulation {
     private double calculateReward() {
         // reward is the negative cost of running the infrastructure
         // - any penalties from jobs waiting in the queue
-        return -cloudSimProxy.getRunningCost() - this.cloudSimProxy.getWaitingJobsCount() * this.queueWaitPenalty;
+        return -cloudSimProxy.getRunningCost()
+                - this.cloudSimProxy.getWaitingJobsCount() * this.queueWaitPenalty * simulationSpeedUp;
     }
 
     public void seed() {
