@@ -154,8 +154,8 @@ public class WrappedSimulation {
         double[] memPercentageUsage = cloudSimProxy.getVmMemoryUsage();
         Arrays.sort(memPercentageUsage);
 
-        double waitingJobsRatioGlobal = cloudSimProxy.getWaitingJobsCount() / (double) cloudSimProxy.getSubmittedJobsCount();
-        double waitingJobsRatioRecent = cloudSimProxy.getWaitingJobsCountInterval(INTERVAL) / (double) cloudSimProxy.getSubmittedJobsCountLastInterval();
+        double waitingJobsRatioGlobal = getWaitingJobsRatioGlobal();
+        double waitingJobsRatioRecent = getWaitingJobsRatioRecent();
 
         metricsStorage.updateMetric("vmAllocatedRatioHistory", getVmAllocatedRatio());
         metricsStorage.updateMetric("avgCPUUtilizationHistory", safeMean(cpuPercentUsage));
@@ -164,6 +164,23 @@ public class WrappedSimulation {
         metricsStorage.updateMetric("p90MemoryUtilizationHistory", percentileWithDefault(memPercentageUsage, 0.90, 0));
         metricsStorage.updateMetric("waitingJobsRatioGlobalHistory", waitingJobsRatioGlobal);
         metricsStorage.updateMetric("waitingJobsRatioRecentHistory", waitingJobsRatioRecent);
+    }
+
+    private double getWaitingJobsRatioRecent() {
+        final int submittedJobsCountLastInterval = cloudSimProxy.getSubmittedJobsCountLastInterval();
+        if(submittedJobsCountLastInterval == 0) {
+            return 0.0;
+        }
+        return cloudSimProxy.getWaitingJobsCountInterval(INTERVAL) / (double) submittedJobsCountLastInterval;
+    }
+
+    private double getWaitingJobsRatioGlobal() {
+        final int submittedJobsCount = cloudSimProxy.getSubmittedJobsCount();
+        if(submittedJobsCount == 0) {
+            return 0.0;
+        }
+
+        return cloudSimProxy.getWaitingJobsCount() / (double) submittedJobsCount;
     }
 
     private double getVmAllocatedRatio() {
