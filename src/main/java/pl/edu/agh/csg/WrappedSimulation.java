@@ -23,12 +23,13 @@ public class WrappedSimulation {
     private final double simulationSpeedUp;
 
     private List<String> metricsNames = Arrays.asList(
-            "vmCountHistory",
-            "p99LatencyHistory",
-            "p90LatencyHistory",
+            "vmAllocatedRatioHistory",
             "avgCPUUtilizationHistory",
             "p90CPUUtilizationHistory",
-            "totalLatencyHistory"
+            "avgMemoryUtilizationHistory",
+            "p90MemoryUtilizationHistory",
+            "waitingJobsRatioGlobalHistory",
+            "waitingJobsRatioRecentHistory"
     );
 
     private final MetricsStorage metricsStorage = new MetricsStorage(HISTORY_LENGTH, metricsNames);
@@ -86,19 +87,20 @@ public class WrappedSimulation {
 
     public String render() {
         double[][] renderedEnv = {
-                metricsStorage.metricValuesAsPrimitives("vmCountHistory"),
-                metricsStorage.metricValuesAsPrimitives("p99LatencyHistory"),
-                metricsStorage.metricValuesAsPrimitives("p90LatencyHistory"),
+                metricsStorage.metricValuesAsPrimitives("vmAllocatedRatioHistory"),
                 metricsStorage.metricValuesAsPrimitives("avgCPUUtilizationHistory"),
                 metricsStorage.metricValuesAsPrimitives("p90CPUUtilizationHistory"),
-                metricsStorage.metricValuesAsPrimitives("totalLatencyHistory")
+                metricsStorage.metricValuesAsPrimitives("avgMemoryUtilizationHistory"),
+                metricsStorage.metricValuesAsPrimitives("p90MemoryUtilizationHistory"),
+                metricsStorage.metricValuesAsPrimitives("waitingJobsRatioGlobalHistory"),
+                metricsStorage.metricValuesAsPrimitives("waitingJobsRatioRecentHistory")
         };
 
         return gson.toJson(renderedEnv);
     }
 
     public SimulationStepResult step(int action) {
-        if(cloudSimProxy == null) {
+        if (cloudSimProxy == null) {
             throw new RuntimeException("Simulation not reset! Please call the reset() function!");
         }
 
@@ -146,31 +148,38 @@ public class WrappedSimulation {
     }
 
     private void collectMetrics() {
-        final double[] latencies = cloudSimProxy.getWaitTimesFromLastInterval();
-        Arrays.sort(latencies);
-
         double[] cpuPercentUsage = cloudSimProxy.getVmCpuUsage();
         Arrays.sort(cpuPercentUsage);
 
-        double totalLatency = DoubleStream.of(latencies).sum();
+        double[] memPercentageUsage = cloudSimProxy.getVmMemoryUsage();
+        Arrays.sort(memPercentageUsage);
 
-        metricsStorage.updateMetric("vmCountHistory", cloudSimProxy.getNumberOfActiveVMs());
-        metricsStorage.updateMetric("p99LatencyHistory", percentileWithDefault(latencies, 0.99, 0));
-        metricsStorage.updateMetric("p90LatencyHistory", percentileWithDefault(latencies, 0.90, 0));
+        double waitingJobsRatioGlobal = cloudSimProxy.getWaitingJobsCount() / (double) cloudSimProxy.getSubmittedJobsCount();
+        double waitingJobsRatioRecent = cloudSimProxy.getWaitingJobsCountInterval(INTERVAL) / (double) cloudSimProxy.getSubmittedJobsCountLastInterval();
+
+        metricsStorage.updateMetric("vmAllocatedRatioHistory", getVmAllocatedRatio());
         metricsStorage.updateMetric("avgCPUUtilizationHistory", safeMean(cpuPercentUsage));
         metricsStorage.updateMetric("p90CPUUtilizationHistory", percentileWithDefault(cpuPercentUsage, 0.90, 0));
-        metricsStorage.updateMetric("totalLatencyHistory", totalLatency);
+        metricsStorage.updateMetric("avgMemoryUtilizationHistory", safeMean(memPercentageUsage));
+        metricsStorage.updateMetric("p90MemoryUtilizationHistory", percentileWithDefault(memPercentageUsage, 0.90, 0));
+        metricsStorage.updateMetric("waitingJobsRatioGlobalHistory", waitingJobsRatioGlobal);
+        metricsStorage.updateMetric("waitingJobsRatioRecentHistory", waitingJobsRatioRecent);
+    }
+
+    private double getVmAllocatedRatio() {
+        return cloudSimProxy.getNumberOfActiveVMs() / settings.getDatacenterHostsCnt();
     }
 
 
     private double[] getObservation() {
         return new double[]{
-                metricsStorage.getLastMetricValue("vmCountHistory"),
-                metricsStorage.getLastMetricValue("p99LatencyHistory"),
-                metricsStorage.getLastMetricValue("p90LatencyHistory"),
+                metricsStorage.getLastMetricValue("vmAllocatedRatioHistory"),
                 metricsStorage.getLastMetricValue("avgCPUUtilizationHistory"),
                 metricsStorage.getLastMetricValue("p90CPUUtilizationHistory"),
-                metricsStorage.getLastMetricValue("totalLatencyHistory")
+                metricsStorage.getLastMetricValue("avgMemoryUtilizationHistory"),
+                metricsStorage.getLastMetricValue("p90MemoryUtilizationHistory"),
+                metricsStorage.getLastMetricValue("waitingJobsRatioGlobalHistory"),
+                metricsStorage.getLastMetricValue("waitingJobsRatioRecentHistory")
         };
     }
 

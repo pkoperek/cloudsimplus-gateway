@@ -43,6 +43,7 @@ public class CloudSimProxy {
     private final List<Cloudlet> potentiallyWaitingJobs = new ArrayList<>(1024);
     private final List<Cloudlet> alreadyStarted = new ArrayList<>(128);
     private int toAddJobId = 0;
+    private int previousIntervalJobId = 0;
 
     public CloudSimProxy(SimulationSettings settings, int initialVmCount, List<Cloudlet> inputJobs, double simulationSpeedUp) {
         this.settings = settings;
@@ -193,6 +194,7 @@ public class CloudSimProxy {
     }
 
     private void scheduleJobsUntil(double target) {
+        previousIntervalJobId = nextVmId;
         List<Cloudlet> jobsToSubmit = new ArrayList<>();
         while (toAddJobId < this.jobs.size() && this.jobs.get(toAddJobId).getSubmissionDelay() <= target) {
             // we process every cloudlet only once here...
@@ -228,6 +230,41 @@ public class CloudSimProxy {
         }
 
         return cpuPercentUsage;
+    }
+
+    public int getSubmittedJobsCountLastInterval() {
+        return toAddJobId - previousIntervalJobId;
+    }
+
+    public int getWaitingJobsCountInterval(double interval) {
+        double start = clock() - interval;
+
+        int jobsWaitingSubmittedInTheInterval = 0;
+        for(Cloudlet cloudlet : potentiallyWaitingJobs) {
+            if(!cloudlet.getStatus().equals(Cloudlet.Status.INEXEC)) {
+                double systemEntryTime = this.originalSubmissionDelay.get(cloudlet.getId());
+                if(systemEntryTime >= start) {
+                    jobsWaitingSubmittedInTheInterval++;
+                }
+            }
+        }
+        return jobsWaitingSubmittedInTheInterval;
+    }
+
+    public int getSubmittedJobsCount() {
+        // this is incremented every time job is submitted
+        return this.toAddJobId;
+    }
+
+    public double[] getVmMemoryUsage() {
+        List<Vm> input = broker.getVmExecList();
+        double[] memPercentUsage = new double[input.size()];
+        int i = 0;
+        for(Vm vm : input) {
+            memPercentUsage[i] = vm.getRam().getPercentUtilization();
+
+        }
+        return memPercentUsage;
     }
 
     public double[] getWaitTimesFromLastInterval() {
