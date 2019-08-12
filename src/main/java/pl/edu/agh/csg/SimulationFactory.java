@@ -3,7 +3,6 @@ package pl.edu.agh.csg;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import org.apache.commons.lang3.NotImplementedException;
-import org.cloudbus.cloudsim.cloudlets.Cloudlet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,6 +15,9 @@ public class SimulationFactory {
 
     private static final Logger logger = LoggerFactory.getLogger(SimulationFactory.class.getName());
     private static final Type cloudletDescriptors = new TypeToken<List<CloudletDescriptor>>() {}.getType();
+
+    public static final String SPLIT_LARGE_JOBS = "SPLIT_LARGE_JOBS";
+    public static final String SPLIT_LARGE_JOBS_DEFAULT = "false";
 
     public static final String QUEUE_WAIT_PENALTY = "QUEUE_WAIT_PENALTY";
     public static final String QUEUE_WAIT_PENALTY_DEFAULT = "0.00001";
@@ -53,6 +55,9 @@ public class SimulationFactory {
         final String queueWaitPenaltyStr = maybeParameters.getOrDefault(QUEUE_WAIT_PENALTY, QUEUE_WAIT_PENALTY_DEFAULT);
         final double queueWaitPenalty = Double.valueOf(queueWaitPenaltyStr);
 
+        final String splitLargeJobsStr = maybeParameters.getOrDefault(SPLIT_LARGE_JOBS, SPLIT_LARGE_JOBS_DEFAULT);
+        final boolean splitLargeJobs = Boolean.valueOf(splitLargeJobsStr.toLowerCase());
+
         final List<CloudletDescriptor> jobs;
 
         switch (sourceOfJobs) {
@@ -68,7 +73,37 @@ public class SimulationFactory {
                 jobs = loadJobsFromParams(maybeParameters, simulationSpeedUp);
         }
 
-        return new WrappedSimulation(identifier, initialVmCount, simulationSpeedUp, queueWaitPenalty, jobs);
+        final SimulationSettings settings = new SimulationSettings();
+        final List<CloudletDescriptor> splitted = splitLargeJobs(jobs, settings);
+
+        return new WrappedSimulation(settings, identifier, initialVmCount, simulationSpeedUp, queueWaitPenalty, splitted);
+    }
+
+    private List<CloudletDescriptor> splitLargeJobs(List<CloudletDescriptor> jobs, SimulationSettings settings) {
+        final int hostPeCnt = settings.getHostPeCnt();
+
+        int splittedId = jobs.size() * 10;
+
+        List<CloudletDescriptor> splitted = new ArrayList<>();
+        for(CloudletDescriptor cloudletDescriptor : jobs) {
+            int numberOfCores = cloudletDescriptor.getNumberOfCores();
+            if(numberOfCores <= hostPeCnt) {
+                splitted.add(cloudletDescriptor);
+            } else {
+                while(numberOfCores > 0) {
+                    CloudletDescriptor splittedDescriptor = new CloudletDescriptor(
+                            splittedId,
+                            cloudletDescriptor.getSubmissionDelay(),
+                            cloudletDescriptor.getMi(),
+                            hostPeCnt < numberOfCores ? hostPeCnt : numberOfCores);
+                    splitted.add(splittedDescriptor);
+                    splittedId++;
+                    numberOfCores -= hostPeCnt;
+                }
+            }
+        }
+
+        return splitted;
     }
 
     private List<CloudletDescriptor> loadJobsFromParams(Map<String, String> maybeParameters, double simulationSpeedUp) {

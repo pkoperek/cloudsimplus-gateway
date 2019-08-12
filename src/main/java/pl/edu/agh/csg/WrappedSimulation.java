@@ -36,14 +36,16 @@ public class WrappedSimulation {
     private final double INTERVAL = 1.0;
     private final String identifier;
     private final int initialVmsCount;
-    private final SimulationSettings settings = new SimulationSettings();
+    private final SimulationSettings settings;
     private CloudSimProxy cloudSimProxy;
 
-    public WrappedSimulation(String identifier,
+    public WrappedSimulation(SimulationSettings simulationSettings,
+                             String identifier,
                              int initialVmsCount,
                              double simulationSpeedUp,
                              double queueWaitPenalty,
                              List<CloudletDescriptor> jobs) {
+        this.settings = simulationSettings;
         this.identifier = identifier;
         this.initialVmsCount = initialVmsCount;
         this.initialJobsDescriptors = jobs;
