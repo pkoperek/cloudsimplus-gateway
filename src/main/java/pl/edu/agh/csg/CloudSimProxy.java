@@ -5,6 +5,7 @@ import org.cloudbus.cloudsim.allocationpolicies.VmAllocationPolicySimple;
 import org.cloudbus.cloudsim.brokers.DatacenterBroker;
 import org.cloudbus.cloudsim.brokers.DatacenterBrokerSimple;
 import org.cloudbus.cloudsim.cloudlets.Cloudlet;
+import org.cloudbus.cloudsim.cloudlets.CloudletExecution;
 import org.cloudbus.cloudsim.core.CloudSim;
 import org.cloudbus.cloudsim.core.CloudSimTags;
 import org.cloudbus.cloudsim.core.events.SimEvent;
@@ -14,8 +15,10 @@ import org.cloudbus.cloudsim.hosts.Host;
 import org.cloudbus.cloudsim.hosts.HostSimple;
 import org.cloudbus.cloudsim.provisioners.PeProvisionerSimple;
 import org.cloudbus.cloudsim.provisioners.ResourceProvisionerSimple;
+import org.cloudbus.cloudsim.resources.Bandwidth;
 import org.cloudbus.cloudsim.resources.Pe;
 import org.cloudbus.cloudsim.resources.PeSimple;
+import org.cloudbus.cloudsim.resources.Ram;
 import org.cloudbus.cloudsim.schedulers.cloudlet.CloudletSchedulerSpaceShared;
 import org.cloudbus.cloudsim.schedulers.vm.VmSchedulerTimeShared;
 import org.cloudbus.cloudsim.vms.Vm;
@@ -135,15 +138,14 @@ public class CloudSimProxy {
     }
 
     public void runFor(final double interval) {
-        final double clock = this.cloudSim.clock();
-        final double target = clock + interval;
+        final double target = this.cloudSim.clock() + interval;
 
         scheduleJobsUntil(target);
 
         int i = 0;
         double adjustedInterval = interval;
         while (this.cloudSim.runFor(adjustedInterval) < target) {
-            adjustedInterval = target - clock;
+            adjustedInterval = target - this.cloudSim.clock();
             adjustedInterval = adjustedInterval <= 0 ? cloudSim.getMinTimeBetweenEvents() : adjustedInterval;
 
             // Force stop if something runs out of control
@@ -154,12 +156,15 @@ public class CloudSimProxy {
         }
 
         alreadyStarted.clear();
-        for (Cloudlet job : potentiallyWaitingJobs) {
+
+        final Iterator<Cloudlet> iterator = potentiallyWaitingJobs.iterator();
+        while(iterator.hasNext()) {
+            Cloudlet job = iterator.next();
             if (job.getStatus() == Cloudlet.Status.INEXEC || job.getStatus() == Cloudlet.Status.SUCCESS || job.getStatus() == Cloudlet.Status.CANCELED) {
                 alreadyStarted.add(job);
+                iterator.remove();
             }
         }
-        potentiallyWaitingJobs.removeAll(alreadyStarted);
 
         cancelInvalidEvents();
     }
@@ -356,6 +361,20 @@ public class CloudSimProxy {
             }
 
             return nextSimulationTime;
+        }
+
+        @Override
+        protected Optional<CloudletExecution> findSuitableWaitingCloudlet() {
+            if(getVm().getProcessor().getAvailableResource() > 0) {
+                final List<CloudletExecution> cloudletWaitingList = getCloudletWaitingList();
+                for(CloudletExecution cle : cloudletWaitingList) {
+                    if(this.isThereEnoughFreePesForCloudlet(cle)) {
+                        return Optional.of(cle);
+                    }
+                }
+            }
+
+            return Optional.empty();
         }
     }
 
