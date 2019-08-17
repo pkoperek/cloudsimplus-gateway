@@ -124,7 +124,8 @@ public class SimulationFactory {
     private CloudletDescriptor speedUp(CloudletDescriptor cloudletDescriptor, double simulationSpeedUp) {
         final long newMi = (long) (cloudletDescriptor.getMi() / simulationSpeedUp);
         final long mi = newMi == 0 ? 1 : newMi;
-        final long submissionDelay = (long) (cloudletDescriptor.getSubmissionDelay() / simulationSpeedUp);
+        final long submissionDelayReal = cloudletDescriptor.getSubmissionDelay() < 0 ? 0L : cloudletDescriptor.getSubmissionDelay();
+        final long submissionDelay = (long) (submissionDelayReal / simulationSpeedUp);
         return new CloudletDescriptor(
                 cloudletDescriptor.getJobId(),
                 submissionDelay,
