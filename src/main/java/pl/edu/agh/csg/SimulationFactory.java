@@ -126,11 +126,12 @@ public class SimulationFactory {
         final long mi = newMi == 0 ? 1 : newMi;
         final long submissionDelayReal = cloudletDescriptor.getSubmissionDelay() < 0 ? 0L : cloudletDescriptor.getSubmissionDelay();
         final long submissionDelay = (long) (submissionDelayReal / simulationSpeedUp);
+        final int numberOfCores = cloudletDescriptor.getNumberOfCores() < 0 ? 1 : cloudletDescriptor.getNumberOfCores();
         return new CloudletDescriptor(
                 cloudletDescriptor.getJobId(),
                 submissionDelay,
                 mi,
-                cloudletDescriptor.getNumberOfCores()
+                numberOfCores
         );
     }
 
