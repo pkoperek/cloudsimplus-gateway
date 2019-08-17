@@ -168,7 +168,7 @@ public class WrappedSimulation {
 
     private double getWaitingJobsRatioRecent() {
         final int submittedJobsCountLastInterval = cloudSimProxy.getSubmittedJobsCountLastInterval();
-        if(submittedJobsCountLastInterval == 0) {
+        if (submittedJobsCountLastInterval == 0) {
             return 0.0;
         }
         return cloudSimProxy.getWaitingJobsCountInterval(INTERVAL) / (double) submittedJobsCountLastInterval;
@@ -176,7 +176,7 @@ public class WrappedSimulation {
 
     private double getWaitingJobsRatioGlobal() {
         final int submittedJobsCount = cloudSimProxy.getSubmittedJobsCount();
-        if(submittedJobsCount == 0) {
+        if (submittedJobsCount == 0) {
             return 0.0;
         }
 
@@ -215,8 +215,9 @@ public class WrappedSimulation {
     private double calculateReward() {
         // reward is the negative cost of running the infrastructure
         // - any penalties from jobs waiting in the queue
-        return -cloudSimProxy.getRunningCost()
-                - this.cloudSimProxy.getWaitingJobsCount() * this.queueWaitPenalty * simulationSpeedUp;
+        final double vmRunningCost = cloudSimProxy.getRunningCost();
+        final double penalty = this.cloudSimProxy.getWaitingJobsCount() * this.queueWaitPenalty * simulationSpeedUp;
+        return -vmRunningCost - penalty;
     }
 
     public void seed() {
