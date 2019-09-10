@@ -9,7 +9,6 @@ import org.slf4j.LoggerFactory;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
-import java.util.stream.DoubleStream;
 
 import static org.apache.commons.math3.stat.StatUtils.percentile;
 
