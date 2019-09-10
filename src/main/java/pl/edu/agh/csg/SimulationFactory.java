@@ -17,7 +17,7 @@ public class SimulationFactory {
     private static final Type cloudletDescriptors = new TypeToken<List<CloudletDescriptor>>() {}.getType();
 
     public static final String SPLIT_LARGE_JOBS = "SPLIT_LARGE_JOBS";
-    public static final String SPLIT_LARGE_JOBS_DEFAULT = "false";
+    public static final String SPLIT_LARGE_JOBS_DEFAULT = "true";
 
     public static final String QUEUE_WAIT_PENALTY = "QUEUE_WAIT_PENALTY";
     public static final String QUEUE_WAIT_PENALTY_DEFAULT = "0.00001";
@@ -74,7 +74,12 @@ public class SimulationFactory {
         }
 
         final SimulationSettings settings = new SimulationSettings();
-        final List<CloudletDescriptor> splitted = splitLargeJobs(jobs, settings);
+        final List<CloudletDescriptor> splitted;
+        if(splitLargeJobs) {
+            splitted = splitLargeJobs(jobs, settings);
+        } else {
+            splitted = jobs;
+        }
 
         return new WrappedSimulation(settings, identifier, initialVmCount, simulationSpeedUp, queueWaitPenalty, splitted);
     }
@@ -90,12 +95,16 @@ public class SimulationFactory {
             if(numberOfCores <= hostPeCnt) {
                 splitted.add(cloudletDescriptor);
             } else {
+                final long miPerCore = (cloudletDescriptor.getMi() / cloudletDescriptor.getNumberOfCores());
                 while(numberOfCores > 0) {
+                    final int fractionOfCores = hostPeCnt < numberOfCores ? hostPeCnt : numberOfCores;
+                    final long totalMips = miPerCore * fractionOfCores;
+                    final long totalMipsNotZero = totalMips == 0 ? 1 : totalMips;
                     CloudletDescriptor splittedDescriptor = new CloudletDescriptor(
                             splittedId,
                             cloudletDescriptor.getSubmissionDelay(),
-                            cloudletDescriptor.getMi(),
-                            hostPeCnt < numberOfCores ? hostPeCnt : numberOfCores);
+                            totalMipsNotZero,
+                            fractionOfCores);
                     splitted.add(splittedDescriptor);
                     splittedId++;
                     numberOfCores -= hostPeCnt;
