@@ -15,10 +15,8 @@ import org.cloudbus.cloudsim.hosts.Host;
 import org.cloudbus.cloudsim.hosts.HostSimple;
 import org.cloudbus.cloudsim.provisioners.PeProvisionerSimple;
 import org.cloudbus.cloudsim.provisioners.ResourceProvisionerSimple;
-import org.cloudbus.cloudsim.resources.Bandwidth;
 import org.cloudbus.cloudsim.resources.Pe;
 import org.cloudbus.cloudsim.resources.PeSimple;
-import org.cloudbus.cloudsim.resources.Ram;
 import org.cloudbus.cloudsim.schedulers.cloudlet.CloudletSchedulerSpaceShared;
 import org.cloudbus.cloudsim.schedulers.vm.VmSchedulerTimeShared;
 import org.cloudbus.cloudsim.vms.Vm;
@@ -149,7 +147,7 @@ public class CloudSimProxy {
             adjustedInterval = adjustedInterval <= 0 ? cloudSim.getMinTimeBetweenEvents() : adjustedInterval;
 
             // Force stop if something runs out of control
-            if (i >= 1000) {
+            if (i >= 10000) {
                 throw new RuntimeException("Breaking a really long loop in runFor!");
             }
             i++;
@@ -158,7 +156,7 @@ public class CloudSimProxy {
         alreadyStarted.clear();
 
         final Iterator<Cloudlet> iterator = potentiallyWaitingJobs.iterator();
-        while(iterator.hasNext()) {
+        while (iterator.hasNext()) {
             Cloudlet job = iterator.next();
             if (job.getStatus() == Cloudlet.Status.INEXEC || job.getStatus() == Cloudlet.Status.SUCCESS || job.getStatus() == Cloudlet.Status.CANCELED) {
                 alreadyStarted.add(job);
@@ -172,7 +170,7 @@ public class CloudSimProxy {
     private void cancelInvalidEvents() {
         final long clock = (long) cloudSim.clock();
 
-        if(clock % 100 == 0) {
+        if (clock % 100 == 0) {
             logger.warn("Cleaning up events (before): " + getNumberOfFutureEvents());
             cloudSim.cancelAll(datacenter, new Predicate<SimEvent>() {
 
@@ -201,6 +199,8 @@ public class CloudSimProxy {
     private void scheduleJobsUntil(double target) {
         previousIntervalJobId = nextVmId;
         List<Cloudlet> jobsToSubmit = new ArrayList<>();
+
+        long addedMips = 0;
         while (toAddJobId < this.jobs.size() && this.jobs.get(toAddJobId).getSubmissionDelay() <= target) {
             // we process every cloudlet only once here...
             final Cloudlet cloudlet = this.jobs.get(toAddJobId);
@@ -208,8 +208,12 @@ public class CloudSimProxy {
             // the job shold enter the cluster once target is crossed
             cloudlet.setSubmissionDelay(1.0);
             jobsToSubmit.add(cloudlet);
+            addedMips += cloudlet.getTotalLength();
             toAddJobId++;
         }
+
+        final double step = this.clock();
+        logger.debug("Job submission:  " + step + ", " + jobsToSubmit.size() + ", " + addedMips);
 
         if (jobsToSubmit.size() > 0) {
             broker.submitCloudletList(jobsToSubmit);
@@ -245,10 +249,10 @@ public class CloudSimProxy {
         double start = clock() - interval;
 
         int jobsWaitingSubmittedInTheInterval = 0;
-        for(Cloudlet cloudlet : potentiallyWaitingJobs) {
-            if(!cloudlet.getStatus().equals(Cloudlet.Status.INEXEC)) {
+        for (Cloudlet cloudlet : potentiallyWaitingJobs) {
+            if (!cloudlet.getStatus().equals(Cloudlet.Status.INEXEC)) {
                 double systemEntryTime = this.originalSubmissionDelay.get(cloudlet.getId());
-                if(systemEntryTime >= start) {
+                if (systemEntryTime >= start) {
                     jobsWaitingSubmittedInTheInterval++;
                 }
             }
@@ -265,7 +269,7 @@ public class CloudSimProxy {
         List<Vm> input = broker.getVmExecList();
         double[] memPercentUsage = new double[input.size()];
         int i = 0;
-        for(Vm vm : input) {
+        for (Vm vm : input) {
             memPercentUsage[i] = vm.getRam().getPercentUtilization();
 
         }
@@ -365,10 +369,10 @@ public class CloudSimProxy {
 
         @Override
         protected Optional<CloudletExecution> findSuitableWaitingCloudlet() {
-            if(getVm().getProcessor().getAvailableResource() > 0) {
+            if (getVm().getProcessor().getAvailableResource() > 0) {
                 final List<CloudletExecution> cloudletWaitingList = getCloudletWaitingList();
-                for(CloudletExecution cle : cloudletWaitingList) {
-                    if(this.isThereEnoughFreePesForCloudlet(cle)) {
+                for (CloudletExecution cle : cloudletWaitingList) {
+                    if (this.isThereEnoughFreePesForCloudlet(cle)) {
                         return Optional.of(cle);
                     }
                 }
