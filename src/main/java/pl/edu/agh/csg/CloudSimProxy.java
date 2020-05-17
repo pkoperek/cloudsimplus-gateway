@@ -67,6 +67,8 @@ public class CloudSimProxy {
         final List<? extends Vm> smallVmList = createVmList(initialVmCount, SMALL);
         broker.submitVmList(smallVmList);
         this.counts.put(SMALL, initialVmCount);
+        this.counts.put(MEDIUM, 0);
+        this.counts.put(LARGE, 0);
 
         this.jobs.addAll(inputJobs);
         Collections.sort(this.jobs, new DelayCloudletComparator());
