@@ -129,11 +129,23 @@ public class WrappedSimulation {
                 break;
             case 1:
                 // adding a new vm
-                cloudSimProxy.addNewVM();
+                cloudSimProxy.addNewVM(CloudSimProxy.SMALL);
                 break;
             case 2:
                 // removing randomly one of the vms
-                cloudSimProxy.removeRandomlyVM();
+                cloudSimProxy.removeRandomlyVM(CloudSimProxy.SMALL);
+                break;
+            case 3:
+                cloudSimProxy.addNewVM(CloudSimProxy.MEDIUM);
+                break;
+            case 4:
+                cloudSimProxy.removeRandomlyVM(CloudSimProxy.MEDIUM);
+                break;
+            case 5:
+                cloudSimProxy.addNewVM(CloudSimProxy.LARGE);
+                break;
+            case 6:
+                cloudSimProxy.removeRandomlyVM(CloudSimProxy.LARGE);
                 break;
         }
     }

@@ -13,17 +13,22 @@ public class SimulationSettings {
     private final int defaultInitialVmCount;
     private final double queueWaitPenalty;
     private final long datacenterHostsCnt;
+    private final long basicVmRam;
+    private final long basicVmPeCount;
 
     public SimulationSettings() {
+        // Host size is big enough to host a m5a.2xlarge VM
         vmRunningHourlyCost = Double.parseDouble(withDefault("VM_RUNNING_HOURLY_COST", "0.2"));
         hostPeMips = Long.parseLong(withDefault("HOST_PE_MIPS", "10000"));
         hostBw = Long.parseLong(withDefault("HOST_BW", "50000"));
-        hostRam = Long.parseLong(withDefault("HOST_RAM", "16384"));
+        hostRam = Long.parseLong(withDefault("HOST_RAM", "32768"));
         hostSize = Long.parseLong(withDefault("HOST_SIZE", "2000"));
-        hostPeCnt = Integer.parseInt(withDefault("HOST_PE_CNT", "4"));
+        hostPeCnt = Integer.parseInt(withDefault("HOST_PE_CNT", "8"));
         defaultInitialVmCount = Integer.parseInt(withDefault("INITIAL_VM_COUNT", "10"));
         queueWaitPenalty = Double.parseDouble(withDefault("QUEUE_WAIT_PENALTY", "0.00001"));
-        datacenterHostsCnt = Long.parseLong(withDefault("DATACENTER_HOSTS_CNT", "1000"));
+        datacenterHostsCnt = Long.parseLong(withDefault("DATACENTER_HOSTS_CNT", "3000"));
+        basicVmRam = Long.parseLong(withDefault("BASIC_VM_RAM", "8192"));
+        basicVmPeCount = Long.parseLong(withDefault("BASIC_VM_PE_CNT", "2"));
     }
 
     public double getVmRunningHourlyCost() {
@@ -60,5 +65,21 @@ public class SimulationSettings {
 
     public long getDatacenterHostsCnt() {
         return datacenterHostsCnt;
+    }
+
+    public long getBasicVmPeCnt() {
+        return this.basicVmPeCount;
+    }
+
+    public long getBasicVmSize() {
+        return this.getHostSize();
+    }
+
+    public long getBasicVmBw() {
+        return this.getHostBw();
+    }
+
+    public long getBasicVmRam() {
+        return this.basicVmRam;
     }
 }

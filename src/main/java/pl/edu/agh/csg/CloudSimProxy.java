@@ -29,15 +29,19 @@ import java.util.function.Predicate;
 
 public class CloudSimProxy {
 
+    public static final String SMALL = "S";
+    public static final String MEDIUM = "M";
+    public static final String LARGE = "L";
+
     private static final Logger logger = LoggerFactory.getLogger(CloudSimProxy.class.getName());
     private static final Double[] double_arr = new Double[0];
+
     private final DatacenterBroker broker;
     private final CloudSim cloudSim;
     private final SimulationSettings settings;
     private final VmCost vmCost;
     private final Datacenter datacenter;
     private final double simulationSpeedUp;
-    private int nextVmId;
     private final Map<Long, Double> originalSubmissionDelay = new HashMap<>();
     private final Random random = new Random(System.currentTimeMillis());
     private final List<Cloudlet> jobs = new ArrayList<>();
@@ -45,6 +49,10 @@ public class CloudSimProxy {
     private final List<Cloudlet> alreadyStarted = new ArrayList<>(128);
     private int toAddJobId = 0;
     private int previousIntervalJobId = 0;
+    private int nextVmId;
+
+    private Map<String, Integer> counts = new HashMap<>();
+    private List<NewVmArrival> newVmsArrivals = new ArrayList<>(5000);
 
     public CloudSimProxy(SimulationSettings settings, int initialVmCount, List<Cloudlet> inputJobs, double simulationSpeedUp) {
         this.settings = settings;
@@ -55,8 +63,10 @@ public class CloudSimProxy {
         this.simulationSpeedUp = simulationSpeedUp;
 
         this.nextVmId = 0;
-        final List<? extends Vm> vmList = createVmList(initialVmCount);
-        broker.submitVmList(vmList);
+
+        final List<? extends Vm> smallVmList = createVmList(initialVmCount, SMALL);
+        broker.submitVmList(smallVmList);
+        this.counts.put(SMALL, initialVmCount);
 
         this.jobs.addAll(inputJobs);
         Collections.sort(this.jobs, new DelayCloudletComparator());
@@ -99,27 +109,50 @@ public class CloudSimProxy {
         return new DatacenterSimple(cloudSim, hostList, new VmAllocationPolicySimple());
     }
 
-    private List<? extends Vm> createVmList(int vmCount) {
+    private List<? extends Vm> createVmList(int vmCount, String type) {
         List<Vm> vmList = new ArrayList<>(1);
 
         for (int i = 0; i < vmCount; i++) {
             // 1 VM == 1 HOST for simplicity
-            vmList.add(createVmWithId());
+            vmList.add(createVmWithId(type));
         }
 
         return vmList;
     }
 
-    private Vm createVmWithId() {
-        Vm vm = new VmSimple(this.nextVmId, settings.getHostPeMips(), settings.getHostPeCnt());
+    private Vm createVmWithId(String type) {
+        int sizeMultiplier;
+
+        switch (type) {
+            case MEDIUM:
+                sizeMultiplier = 2; // m5a.xlarge
+                break;
+            case LARGE:
+                sizeMultiplier = 4; // m5a.2xlarge
+                break;
+            case SMALL:
+            default:
+                sizeMultiplier = 1; // m5a.large
+        }
+
+        Vm vm = new VmSimple(
+                this.nextVmId,
+                settings.getHostPeMips(),
+                settings.getBasicVmPeCnt() * sizeMultiplier);
         this.nextVmId++;
         vm
-                .setRam(settings.getHostRam())
-                .setBw(settings.getHostBw())
-                .setSize(settings.getHostSize())
-                .setCloudletScheduler(new CloudletScheduler());
-        vmCost.notifyCreateVM(vm, this.cloudSim.clock());
+                .setRam(settings.getBasicVmRam() * sizeMultiplier)
+                .setBw(settings.getBasicVmBw())
+                .setSize(settings.getBasicVmSize())
+                .setCloudletScheduler(new CloudletScheduler())
+                .setDescription(type);
+        vmCost.notifyCreateVM(vm);
         return vm;
+    }
+
+    private void increaseTypeCount(String type) {
+        int typeCount = this.counts.getOrDefault(type, 0);
+        this.counts.put(type, typeCount + 1);
     }
 
     private List<Pe> createPeList() {
@@ -219,6 +252,23 @@ public class CloudSimProxy {
             broker.submitCloudletList(jobsToSubmit);
             potentiallyWaitingJobs.addAll(jobsToSubmit);
         }
+
+        countStartedVms();
+    }
+
+    private void countStartedVms() {
+        final double now = this.clock();
+
+        final ListIterator<NewVmArrival> newVmArrivalListIterator = newVmsArrivals.listIterator();
+
+        while (newVmArrivalListIterator.hasNext()) {
+            final NewVmArrival current = newVmArrivalListIterator.next();
+
+            if (current.getArrivalTimestamp() <= now) {
+                increaseTypeCount(current.getType());
+                newVmArrivalListIterator.remove();
+            }
+        }
     }
 
     public boolean isRunning() {
@@ -271,7 +321,6 @@ public class CloudSimProxy {
         int i = 0;
         for (Vm vm : input) {
             memPercentUsage[i] = vm.getRam().getPercentUtilization();
-
         }
         return memPercentUsage;
     }
@@ -287,52 +336,94 @@ public class CloudSimProxy {
         return ArrayUtils.toPrimitive(waitingTimes.toArray(double_arr));
     }
 
-    public void addNewVM() {
+    public void addNewVM(String type) {
         // assuming average delay up to 97s as in 10.1109/CLOUD.2012.103
         // from anecdotal exp the startup time can be as fast as 45s
-        Vm newVm = createVmWithId();
+        Vm newVm = createVmWithId(type);
         double delay = (45 + Math.random() * 52) / this.simulationSpeedUp;
         newVm.setSubmissionDelay(delay);
 
         broker.submitVm(newVm);
-        logger.debug("VM creating requested, delay: " + delay);
+        logger.debug("VM creating requested, delay: " + delay + " type: " + type);
+
+        final double newVmArrivalTimestamp = this.clock() + delay;
+        this.newVmsArrivals.add(new NewVmArrival(type, newVmArrivalTimestamp));
     }
 
-    public void removeRandomlyVM() {
-        List<Vm> vmExecList = broker.getVmExecList();
-        int upperBound = vmExecList.size();
+    public void removeRandomlyVM(String type) {
+        logger.debug("VM destroying requested, type: " + type);
+        final Integer typeCount = this.counts.get(type);
 
-        if (upperBound > 1) {
-            int vmToKillIdx = random.nextInt(upperBound);
+        // tutaj zmienić
+        if (typeCount > 1) {
+            List<Vm> vmExecList = broker.getVmExecList();
+            int vmToKillIdx = random.nextInt(typeCount);
 
-            final Vm vm = vmExecList.get(vmToKillIdx);
-            final List<Cloudlet> affectedCloudlets = this.broker.destroyVm(vm);
-
-            logger.debug("Killing VM: " + vm.getId() + " to reschedule cloudlets: " + affectedCloudlets.size());
-
-            final double currentClock = cloudSim.clock();
-
-            affectedCloudlets.forEach(cloudlet -> {
-                Double submissionDelay = originalSubmissionDelay.get(cloudlet.getId());
-
-                if (submissionDelay == null) {
-                    throw new RuntimeException("Cloudlet with ID: " + cloudlet.getId() + " not seen previously! Original submission time unknown!");
+            Vm vmToKill = null;
+            for (Vm vm : vmExecList) {
+                if (vm.getDescription().equals(type)) {
+                    if (vmToKillIdx <= 0) {
+                        vmToKill = vm;
+                        break;
+                    }
+                    vmToKillIdx--;
                 }
+            }
 
-                if (submissionDelay < currentClock) {
-                    submissionDelay = 1.0;
+            if (vmToKill != null) {
+                destroyVm(vmToKill);
+            } else {
+                if (vmExecList.size() == 0 && typeCount > 0) {
+                    logger.debug("VMs are still initializing... Ignoring the request");
                 } else {
-                    // if we the Cloudlet still hasn't been started, let it start at the scheduled time.
-                    submissionDelay -= currentClock;
+                    throw new RuntimeException(String.format(
+                            "Can't kill a VM - could not find a VM with the drawn idx (idx: %s, typeCount: %s)",
+                            vmToKillIdx,
+                            typeCount
+                    ));
                 }
-
-                cloudlet.setSubmissionDelay(submissionDelay);
-            });
-
-            broker.submitCloudletList(affectedCloudlets);
+            }
         } else {
             logger.warn("Can't kill a VM - only one running");
         }
+    }
+
+    private void destroyVm(Vm vm) {
+        final String vmSize = vm.getDescription();
+        int typeCount = this.counts.get(vmSize);
+        this.counts.put(vmSize, typeCount - 1);
+
+        final List<Cloudlet> affectedCloudlets = this.broker.destroyVm(vm);
+        logger.debug("Killing VM: "
+                + vm.getId()
+                + " to reschedule cloudlets: "
+                + affectedCloudlets.size()
+                + " new typeCount: "
+                + this.counts.get(vmSize));
+        rescheduleCloudlets(affectedCloudlets);
+    }
+
+    private void rescheduleCloudlets(List<Cloudlet> affectedCloudlets) {
+        final double currentClock = cloudSim.clock();
+
+        affectedCloudlets.forEach(cloudlet -> {
+            Double submissionDelay = originalSubmissionDelay.get(cloudlet.getId());
+
+            if (submissionDelay == null) {
+                throw new RuntimeException("Cloudlet with ID: " + cloudlet.getId() + " not seen previously! Original submission time unknown!");
+            }
+
+            if (submissionDelay < currentClock) {
+                submissionDelay = 1.0;
+            } else {
+                // if we the Cloudlet still hasn't been started, let it start at the scheduled time.
+                submissionDelay -= currentClock;
+            }
+
+            cloudlet.setSubmissionDelay(submissionDelay);
+        });
+
+        broker.submitCloudletList(affectedCloudlets);
     }
 
     public double clock() {

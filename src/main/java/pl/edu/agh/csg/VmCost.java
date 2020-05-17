@@ -22,7 +22,7 @@ public class VmCost {
         this.secondsInHour = 60 * 60 / this.speedUp;
     }
 
-    public void notifyCreateVM(Vm vm, double clock) {
+    public void notifyCreateVM(Vm vm) {
         this.createdVms.add(vm);
     }
 
