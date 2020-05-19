@@ -35,6 +35,7 @@ public class VmCost {
         List<Vm> toRemove = new ArrayList<>();
         for(Vm vm : createdVms) {
             // check if the vm is started
+            double m = getSizeMultiplier(vm);
             if(vm.getStartTime() > -1) {
                 if(vm.getStopTime() > -1) {
                     // vm was stopped - we continue to pay for it within the last running hour
@@ -45,7 +46,7 @@ public class VmCost {
                     }
                 } else {
                     // vm still running - just
-                    totalCost += perSecondVMCost;
+                    totalCost += perSecondVMCost ;
                 }
             } else {
                 // created - not running yet, need to pay for it
@@ -55,6 +56,16 @@ public class VmCost {
         removedVms.addAll(toRemove);
         createdVms.removeAll(toRemove);
         return totalCost;
+    }
+
+    private double getSizeMultiplier(Vm vm) {
+        if("M".equals(vm.getDescription())) {
+            return 2.0;
+        }
+        if("L".equals(vm.getDescription())) {
+            return 4.0;
+        }
+        return 1.0;
     }
 
     public double getPerHourVMCost() {

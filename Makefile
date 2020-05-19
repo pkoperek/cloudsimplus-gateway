@@ -1,5 +1,5 @@
 release:
 	./gradlew dockerBuildImage
-	docker tag pkoperek/cloudsimplus-gateway:1.6.1 pkoperek/cloudsimplus-gateway:latest	
+	docker tag pkoperek/cloudsimplus-gateway:1.6.2 pkoperek/cloudsimplus-gateway:latest
 	docker push pkoperek/cloudsimplus-gateway:latest
-	docker push pkoperek/cloudsimplus-gateway:1.6.1
+	docker push pkoperek/cloudsimplus-gateway:1.6.2

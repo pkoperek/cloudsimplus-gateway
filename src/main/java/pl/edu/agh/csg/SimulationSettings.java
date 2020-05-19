@@ -67,6 +67,10 @@ public class SimulationSettings {
         return datacenterHostsCnt;
     }
 
+    public long getDatacenterCores() {
+        return getDatacenterHostsCnt() * hostPeCnt;
+    }
+
     public long getBasicVmPeCnt() {
         return this.basicVmPeCount;
     }

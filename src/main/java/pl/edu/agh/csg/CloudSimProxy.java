@@ -1,7 +1,6 @@
 package pl.edu.agh.csg;
 
 import org.apache.commons.lang3.ArrayUtils;
-import org.cloudbus.cloudsim.allocationpolicies.VmAllocationPolicySimple;
 import org.cloudbus.cloudsim.brokers.DatacenterBroker;
 import org.cloudbus.cloudsim.brokers.DatacenterBrokerSimple;
 import org.cloudbus.cloudsim.cloudlets.Cloudlet;
@@ -21,8 +20,6 @@ import org.cloudbus.cloudsim.schedulers.cloudlet.CloudletSchedulerSpaceShared;
 import org.cloudbus.cloudsim.schedulers.vm.VmSchedulerTimeShared;
 import org.cloudbus.cloudsim.vms.Vm;
 import org.cloudbus.cloudsim.vms.VmSimple;
-import org.cloudsimplus.listeners.DatacenterBrokerEventInfo;
-import org.cloudsimplus.listeners.EventListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -132,19 +129,7 @@ public class CloudSimProxy {
     }
 
     private Vm createVmWithId(String type) {
-        int sizeMultiplier;
-
-        switch (type) {
-            case MEDIUM:
-                sizeMultiplier = 2; // m5a.xlarge
-                break;
-            case LARGE:
-                sizeMultiplier = 4; // m5a.2xlarge
-                break;
-            case SMALL:
-            default:
-                sizeMultiplier = 1; // m5a.large
-        }
+        int sizeMultiplier = getSizeMultiplier(type);
 
         Vm vm = new VmSimple(
                 this.nextVmId,
@@ -159,6 +144,23 @@ public class CloudSimProxy {
                 .setDescription(type);
         vmCost.notifyCreateVM(vm);
         return vm;
+    }
+
+    private int getSizeMultiplier(String type) {
+        int sizeMultiplier;
+
+        switch (type) {
+            case MEDIUM:
+                sizeMultiplier = 2; // m5a.xlarge
+                break;
+            case LARGE:
+                sizeMultiplier = 4; // m5a.2xlarge
+                break;
+            case SMALL:
+            default:
+                sizeMultiplier = 1; // m5a.large
+        }
+        return sizeMultiplier;
     }
 
     private void increaseTypeCount(String type) {
@@ -263,7 +265,6 @@ public class CloudSimProxy {
             broker.submitCloudletList(jobsToSubmit);
             potentiallyWaitingJobs.addAll(jobsToSubmit);
         }
-
     }
 
     public boolean isRunning() {
@@ -272,6 +273,14 @@ public class CloudSimProxy {
 
     public double getNumberOfActiveVMs() {
         return (double) broker.getVmExecList().size();
+    }
+
+    public long getNumberOfActiveCores() {
+        final Integer small = this.counts.getOrDefault(SMALL, 0) * getSizeMultiplier(SMALL);
+        final Integer medium = this.counts.getOrDefault(MEDIUM, 0) * getSizeMultiplier(MEDIUM);
+        final Integer large = this.counts.getOrDefault(LARGE, 0) * getSizeMultiplier(LARGE);
+
+        return small + medium + large;
     }
 
     public double[] getVmCpuUsage() {
