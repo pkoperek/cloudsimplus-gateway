@@ -21,6 +21,8 @@ import org.cloudbus.cloudsim.schedulers.cloudlet.CloudletSchedulerSpaceShared;
 import org.cloudbus.cloudsim.schedulers.vm.VmSchedulerTimeShared;
 import org.cloudbus.cloudsim.vms.Vm;
 import org.cloudbus.cloudsim.vms.VmSimple;
+import org.cloudsimplus.listeners.DatacenterBrokerEventInfo;
+import org.cloudsimplus.listeners.EventListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,7 +54,6 @@ public class CloudSimProxy {
     private int nextVmId;
 
     private Map<String, Integer> counts = new HashMap<>();
-    private List<NewVmArrival> newVmsArrivals = new ArrayList<>(5000);
 
     public CloudSimProxy(SimulationSettings settings, int initialVmCount, List<Cloudlet> inputJobs, double simulationSpeedUp) {
         this.settings = settings;
@@ -66,7 +67,7 @@ public class CloudSimProxy {
 
         final List<? extends Vm> smallVmList = createVmList(initialVmCount, SMALL);
         broker.submitVmList(smallVmList);
-        this.counts.put(SMALL, initialVmCount);
+        this.counts.put(SMALL, 0);
         this.counts.put(MEDIUM, 0);
         this.counts.put(LARGE, 0);
 
@@ -108,7 +109,15 @@ public class CloudSimProxy {
             hostList.add(host);
         }
 
-        return new DatacenterSimple(cloudSim, hostList, new VmAllocationPolicySimple());
+        NotifyingVmAllocationPolicy allocationPolicy = new NotifyingVmAllocationPolicy();
+        allocationPolicy.addVmCreatedListener(new VmCreatedListener() {
+            @Override
+            public void notifyVmCreated(String type) {
+                final int updatedTypeCount = CloudSimProxy.this.counts.getOrDefault(type, 0) + 1;
+                CloudSimProxy.this.counts.put(type, updatedTypeCount);
+            }
+        });
+        return new DatacenterSimple(cloudSim, hostList, allocationPolicy);
     }
 
     private List<? extends Vm> createVmList(int vmCount, String type) {
@@ -255,22 +264,6 @@ public class CloudSimProxy {
             potentiallyWaitingJobs.addAll(jobsToSubmit);
         }
 
-        countStartedVms();
-    }
-
-    private void countStartedVms() {
-        final double now = this.clock();
-
-        final ListIterator<NewVmArrival> newVmArrivalListIterator = newVmsArrivals.listIterator();
-
-        while (newVmArrivalListIterator.hasNext()) {
-            final NewVmArrival current = newVmArrivalListIterator.next();
-
-            if (current.getArrivalTimestamp() <= now) {
-                increaseTypeCount(current.getType());
-                newVmArrivalListIterator.remove();
-            }
-        }
     }
 
     public boolean isRunning() {
@@ -347,13 +340,9 @@ public class CloudSimProxy {
 
         broker.submitVm(newVm);
         logger.debug("VM creating requested, delay: " + delay + " type: " + type);
-
-        final double newVmArrivalTimestamp = this.clock() + delay;
-        this.newVmsArrivals.add(new NewVmArrival(type, newVmArrivalTimestamp));
     }
 
     public void removeRandomlyVM(String type) {
-        logger.debug("VM destroying requested, type: " + type);
         final Integer typeCount = this.counts.get(type);
 
         // tutaj zmienić
@@ -376,12 +365,13 @@ public class CloudSimProxy {
                 destroyVm(vmToKill);
             } else {
                 if (vmExecList.size() == 0 && typeCount > 0) {
-                    logger.debug("VMs are still initializing... Ignoring the request");
+                    logger.debug("VMs are still initializing... Ignoring the request (" + type + ")");
                 } else {
                     throw new RuntimeException(String.format(
-                            "Can't kill a VM - could not find a VM with the drawn idx (idx: %s, typeCount: %s)",
+                            "Can't kill a VM - could not find a VM with the drawn idx (idx: %s, typeCount: %s, type: %s)",
                             vmToKillIdx,
-                            typeCount
+                            typeCount,
+                            type
                     ));
                 }
             }
@@ -401,7 +391,9 @@ public class CloudSimProxy {
                 + " to reschedule cloudlets: "
                 + affectedCloudlets.size()
                 + " new typeCount: "
-                + this.counts.get(vmSize));
+                + this.counts.get(vmSize)
+                + " type: "
+                + vmSize);
         rescheduleCloudlets(affectedCloudlets);
     }
 
