@@ -80,7 +80,7 @@ public class SimulationSettings {
     }
 
     public long getBasicVmBw() {
-        return this.getHostBw();
+        return this.getHostBw() / 4;
     }
 
     public long getBasicVmRam() {
