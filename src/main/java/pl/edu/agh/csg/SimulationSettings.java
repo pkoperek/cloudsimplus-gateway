@@ -22,7 +22,7 @@ public class SimulationSettings {
         hostPeMips = Long.parseLong(withDefault("HOST_PE_MIPS", "10000"));
         hostBw = Long.parseLong(withDefault("HOST_BW", "50000"));
         hostRam = Long.parseLong(withDefault("HOST_RAM", "32768"));
-        hostSize = Long.parseLong(withDefault("HOST_SIZE", "2000"));
+        hostSize = Long.parseLong(withDefault("HOST_SIZE", "16000"));
         hostPeCnt = Integer.parseInt(withDefault("HOST_PE_CNT", "8"));
         defaultInitialVmCount = Integer.parseInt(withDefault("INITIAL_VM_COUNT", "10"));
         queueWaitPenalty = Double.parseDouble(withDefault("QUEUE_WAIT_PENALTY", "0.00001"));
@@ -76,7 +76,7 @@ public class SimulationSettings {
     }
 
     public long getBasicVmSize() {
-        return this.getHostSize();
+        return this.getHostSize() / 4;
     }
 
     public long getBasicVmBw() {
