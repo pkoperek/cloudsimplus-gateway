@@ -8,7 +8,6 @@ import org.cloudbus.cloudsim.cloudlets.Cloudlet;
 import org.cloudbus.cloudsim.cloudlets.CloudletExecution;
 import org.cloudbus.cloudsim.core.CloudSim;
 import org.cloudbus.cloudsim.core.CloudSimTags;
-import org.cloudbus.cloudsim.core.Machine;
 import org.cloudbus.cloudsim.core.events.SimEvent;
 import org.cloudbus.cloudsim.datacenters.Datacenter;
 import org.cloudbus.cloudsim.datacenters.DatacenterSimple;
@@ -26,7 +25,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
-import java.util.function.BinaryOperator;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -71,20 +69,24 @@ public class CloudSimProxy {
         Collections.sort(this.jobs, new DelayCloudletComparator());
         this.jobs.forEach(c -> originalSubmissionDelay.put(c.getId(), c.getSubmissionDelay()));
 
+        scheduleAdditionalCloudletProcessingEvent(this.jobs);
+
+        this.cloudSim.startSync();
+        this.runFor(0.1);
+    }
+
+    private void scheduleAdditionalCloudletProcessingEvent(final List<Cloudlet> jobs) {
         // a second after every cloudlet will be submitted we add an event - this should prevent
         // the simulation from ending while we have some jobs to schedule
-        this.jobs.forEach(c ->
+        jobs.forEach(c ->
                 this.cloudSim.send(
                         datacenter,
                         datacenter,
                         c.getSubmissionDelay() + 1.0,
                         CloudSimTags.VM_UPDATE_CLOUDLET_PROCESSING,
-                        null
+                        ResubmitAnchor.THE_VALUE
                 )
         );
-
-        this.cloudSim.startSync();
-        this.runFor(0.1);
     }
 
     private Datacenter createDatacenter() {
@@ -109,7 +111,7 @@ public class CloudSimProxy {
     }
 
     private List<? extends Vm> createVmList(int vmCount, String type) {
-        List<Vm> vmList = new ArrayList<>(1);
+        List<Vm> vmList = new ArrayList<>(vmCount);
 
         for (int i = 0; i < vmCount; i++) {
             // 1 VM == 1 HOST for simplicity
@@ -215,7 +217,8 @@ public class CloudSimProxy {
                             current.getTag() == CloudSimTags.VM_UPDATE_CLOUDLET_PROCESSING &&
                             current.getSource() == datacenter &&
                             current.getDestination() == datacenter &&
-                            previous.getTime() == current.getTime()
+                            previous.getTime() == current.getTime() &&
+                            current.getData() == ResubmitAnchor.THE_VALUE
                     ) {
                         return true;
                     }
@@ -395,6 +398,8 @@ public class CloudSimProxy {
         });
 
         broker.submitCloudletList(affectedCloudlets);
+
+        scheduleAdditionalCloudletProcessingEvent(affectedCloudlets);
     }
 
     public double clock() {
