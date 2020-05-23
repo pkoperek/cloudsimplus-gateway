@@ -76,8 +76,10 @@ public class SimulationFactory {
         final SimulationSettings settings = new SimulationSettings();
         final List<CloudletDescriptor> splitted;
         if(splitLargeJobs) {
+            logger.info("Splitting large jobs");
             splitted = splitLargeJobs(jobs, settings);
         } else {
+            logger.info("Not applying the splitting algorithm - using raw jobs");
             splitted = jobs;
         }
 
@@ -85,7 +87,7 @@ public class SimulationFactory {
     }
 
     private List<CloudletDescriptor> splitLargeJobs(List<CloudletDescriptor> jobs, SimulationSettings settings) {
-        final int hostPeCnt = settings.getHostPeCnt();
+        final int hostPeCnt = (int) settings.getBasicVmPeCnt();
 
         int splittedId = jobs.size() * 10;
 
@@ -111,6 +113,8 @@ public class SimulationFactory {
                 }
             }
         }
+
+        logger.info("Splitted: " + jobs.size() + " into " + splitted.size());
 
         return splitted;
     }
