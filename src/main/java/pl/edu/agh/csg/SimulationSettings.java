@@ -22,17 +22,17 @@ public class SimulationSettings {
         vmRunningHourlyCost = Double.parseDouble(withDefault("VM_RUNNING_HOURLY_COST", "0.2"));
         hostPeMips = Long.parseLong(withDefault("HOST_PE_MIPS", "10000"));
         hostBw = Long.parseLong(withDefault("HOST_BW", "50000"));
-        hostRam = Long.parseLong(withDefault("HOST_RAM", "32768"));
+        hostRam = Long.parseLong(withDefault("HOST_RAM", "65536"));
         hostSize = Long.parseLong(withDefault("HOST_SIZE", "16000"));
-        hostPeCnt = Integer.parseInt(withDefault("HOST_PE_CNT", "8"));
+        hostPeCnt = Integer.parseInt(withDefault("HOST_PE_CNT", "14"));
         defaultInitialVmCount = Integer.parseInt(withDefault("INITIAL_VM_COUNT", "10"));
         queueWaitPenalty = Double.parseDouble(withDefault("QUEUE_WAIT_PENALTY", "0.00001"));
         datacenterHostsCnt = Long.parseLong(withDefault("DATACENTER_HOSTS_CNT", "3000"));
         basicVmRam = Long.parseLong(withDefault("BASIC_VM_RAM", "8192"));
         basicVmPeCount = Long.parseLong(withDefault("BASIC_VM_PE_CNT", "2"));
 
-        // default is the number of hosts x 4 - on every host we can have up to 4 basic vms
-        maxVmsPerSize = Long.parseLong(withDefault("MAX_VMS_PER_SIZE", String.valueOf(3000*4)));
+        // we can have 3000 == the same as number of hosts, as every host can have 1 small, 1 medium and 1 large Vm
+        maxVmsPerSize = Long.parseLong(withDefault("MAX_VMS_PER_SIZE", "3000"));
     }
 
     public double getVmRunningHourlyCost() {
@@ -89,6 +89,11 @@ public class SimulationSettings {
 
     public long getBasicVmRam() {
         return this.basicVmRam;
+    }
+
+    public long getAvailableCores() {
+        // we can have 2 cores for a small VM, 4 for Medium and 8 for a large one
+        return getMaxVmsPerSize() * (2 + 4 + 8);
     }
 
     public long getMaxVmsPerSize() {

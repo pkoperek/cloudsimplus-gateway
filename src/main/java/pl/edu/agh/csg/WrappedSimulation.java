@@ -217,7 +217,7 @@ public class WrappedSimulation {
     }
 
     private double getVmAllocatedRatio() {
-        return ((double)cloudSimProxy.getNumberOfActiveCores()) / settings.getDatacenterCores();
+        return ((double)cloudSimProxy.getNumberOfActiveCores()) / settings.getAvailableCores();
     }
 
 
