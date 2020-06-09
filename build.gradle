@@ -51,7 +51,7 @@ docker {
         baseImage = 'openjdk:11-jre'
         maintainer = 'Pawel Koperek "pkoperek@gmail.com""'
         ports = [25333]
-        tag = 'pkoperek/cloudsimplus-gateway:1.6.16'
+        tag = 'pkoperek/cloudsimplus-gateway:1.6.17'
         jvmArgs = ['-Xms1G', '-Xmx30G']
     }
 }

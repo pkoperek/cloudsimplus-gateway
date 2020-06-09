@@ -204,38 +204,49 @@ public class CloudSimProxy {
 
         cancelInvalidEvents();
         printJobStatsAfterEndOfSimulation();
+
+        if(shouldPrintJobStats()) {
+            printJobStats();
+        }
+    }
+
+    private boolean shouldPrintJobStats() {
+        return this.settings.getPrintJobsPeriodically() && Double.valueOf(this.clock()).longValue() % 20000 == 0;
     }
 
     private void printJobStatsAfterEndOfSimulation() {
         if (!cloudSim.isRunning()) {
             logger.info("End of simulation, some reality check stats:");
-            logger.info("all jobs: " + this.jobs.size());
 
-            Map<Cloudlet.Status, Integer> countByStatus = new HashMap<>();
-            for (Cloudlet c : this.jobs) {
-                final Cloudlet.Status status = c.getStatus();
-                int count = countByStatus.getOrDefault(status, 0);
-                countByStatus.put(status, count + 1);
+            printJobStats();
+        }
+    }
+
+    private void printJobStats() {
+        logger.info("All jobs: " + this.jobs.size());
+        Map<Cloudlet.Status, Integer> countByStatus = new HashMap<>();
+        for (Cloudlet c : this.jobs) {
+            final Cloudlet.Status status = c.getStatus();
+            int count = countByStatus.getOrDefault(status, 0);
+            countByStatus.put(status, count + 1);
+        }
+
+        for(Map.Entry<Cloudlet.Status, Integer> e : countByStatus.entrySet()) {
+            logger.info(e.getKey().toString() + ": " + e.getValue());
+        }
+
+        logger.info("Jobs which are still queued");
+        for(Cloudlet c : this.jobs) {
+            if(Cloudlet.Status.QUEUED.equals(c.getStatus())) {
+                logger.info("Cloudlet: " + c.getId());
+                logger.info("Number of PEs: " + c.getNumberOfPes());
+                logger.info("Number of MIPS: " + c.getLength());
+                logger.info("Submission delay: " + c.getSubmissionDelay());
+                final Vm vm = c.getVm();
+                logger.info("VM: " + vm.getId() + "(" + vm.getDescription() + ")"
+                        + " CPU: " + vm.getNumberOfPes() +"/" + vm.getMips() +  " @ " + vm.getCpuPercentUtilization()
+                        + " RAM: " + vm.getRam().getAllocatedResource());
             }
-
-            for(Map.Entry<Cloudlet.Status, Integer> e : countByStatus.entrySet()) {
-                logger.info(e.getKey().toString() + ": " + e.getValue());
-            }
-
-            logger.info("Jobs which are still queued");
-            for(Cloudlet c : this.jobs) {
-                if(Cloudlet.Status.QUEUED.equals(c.getStatus())) {
-                    logger.info("Cloudlet: " + c.getId());
-                    logger.info("Number of PEs: " + c.getNumberOfPes());
-                    logger.info("Number of MIPS: " + c.getLength());
-                    logger.info("Submission delay: " + c.getSubmissionDelay());
-                    final Vm vm = c.getVm();
-                    logger.info("VM: " + vm.getId() + "(" + vm.getDescription() + ")"
-                            + " CPU: " + vm.getNumberOfPes() +"/" + vm.getMips() +  " @ " + vm.getCpuPercentUtilization()
-                            + " RAM: " + vm.getRam().getAllocatedResource());
-                }
-            }
-
         }
     }
 

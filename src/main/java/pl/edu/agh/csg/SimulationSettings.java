@@ -16,6 +16,7 @@ public class SimulationSettings {
     private final long basicVmRam;
     private final long basicVmPeCount;
     private final long maxVmsPerSize;
+    private final boolean printJobsPeriodically;
 
     public SimulationSettings() {
         // Host size is big enough to host a m5a.2xlarge VM
@@ -33,6 +34,7 @@ public class SimulationSettings {
 
         // we can have 3000 == the same as number of hosts, as every host can have 1 small, 1 medium and 1 large Vm
         maxVmsPerSize = Long.parseLong(withDefault("MAX_VMS_PER_SIZE", "3000"));
+        printJobsPeriodically = Boolean.parseBoolean(withDefault("PRINT_JOBS_PERIODICALLY", "false"));
     }
 
     public double getVmRunningHourlyCost() {
@@ -98,5 +100,9 @@ public class SimulationSettings {
 
     public long getMaxVmsPerSize() {
         return maxVmsPerSize;
+    }
+
+    public boolean getPrintJobsPeriodically() {
+        return printJobsPeriodically;
     }
 }
