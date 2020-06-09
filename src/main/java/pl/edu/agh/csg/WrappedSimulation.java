@@ -154,19 +154,31 @@ public class WrappedSimulation {
     }
 
     private void removeVM(String type) {
-        if(cloudSimProxy.removeRandomlyVM(type)) {
+        if (cloudSimProxy.removeRandomlyVM(type)) {
             this.vmCounter.recordRemovedVM(type);
         } else {
-            logger.info("Removing a VM of type " + type + " requested but the request was ignored");
+            logger.info("Removing a VM of type "
+                    + type + " requested but the request was ignored. Stats: "
+                    + " S: " + this.vmCounter.getStartedVms(CloudSimProxy.SMALL)
+                    + " M: " + this.vmCounter.getStartedVms(CloudSimProxy.MEDIUM)
+                    + " L: " + this.vmCounter.getStartedVms(CloudSimProxy.LARGE)
+            );
         }
     }
 
     private void addNewVM(String type) {
-        if(vmCounter.hasCapacity(type)) {
+        if (vmCounter.hasCapacity(type)) {
             cloudSimProxy.addNewVM(type);
             vmCounter.recordNewVM(type);
         } else {
-            logger.info("Adding a VM of type " + type + " requested but the request was ignored (MAX_VMS_PER_SIZE reached)");
+            logger.info("Adding a VM of type "
+                    + type
+                    + " requested but the request was ignored (MAX_VMS_PER_SIZE "
+                    + this.settings.getMaxVmsPerSize() + " reached) Stats: "
+                    + " S: " + this.vmCounter.getStartedVms(CloudSimProxy.SMALL)
+                    + " M: " + this.vmCounter.getStartedVms(CloudSimProxy.MEDIUM)
+                    + " L: " + this.vmCounter.getStartedVms(CloudSimProxy.LARGE)
+            );
         }
     }
 
@@ -215,7 +227,7 @@ public class WrappedSimulation {
     }
 
     private double getVmAllocatedRatio() {
-        return ((double)cloudSimProxy.getNumberOfActiveCores()) / settings.getAvailableCores();
+        return ((double) cloudSimProxy.getNumberOfActiveCores()) / settings.getAvailableCores();
     }
 
 

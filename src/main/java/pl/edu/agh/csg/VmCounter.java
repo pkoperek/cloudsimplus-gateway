@@ -32,4 +32,8 @@ public class VmCounter {
         final Long currentOfType = getCurrentOfType(type);
         this.vmCounts.put(type, currentOfType - 1);
     }
+
+    public long getStartedVms(String type) {
+        return getCurrentOfType(type);
+    }
 }
