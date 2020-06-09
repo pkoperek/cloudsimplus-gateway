@@ -17,12 +17,9 @@ public class WrappedSimulation {
     private static final Logger logger = LoggerFactory.getLogger(WrappedSimulation.class.getName());
     private static final int HISTORY_LENGTH = 30 * 60; // 30 minutes * 60s
     private final double queueWaitPenalty;
-
     private final List<CloudletDescriptor> initialJobsDescriptors;
     private final double simulationSpeedUp;
-    private final VmCounter vmCounter;
-
-    private List<String> metricsNames = Arrays.asList(
+    private final List<String> metricsNames = Arrays.asList(
             "vmAllocatedRatioHistory",
             "avgCPUUtilizationHistory",
             "p90CPUUtilizationHistory",
@@ -39,6 +36,7 @@ public class WrappedSimulation {
     private final int initialVmsCount;
     private final SimulationSettings settings;
     private CloudSimProxy cloudSimProxy;
+    private VmCounter vmCounter;
 
     public WrappedSimulation(SimulationSettings simulationSettings,
                              String identifier,
@@ -52,10 +50,6 @@ public class WrappedSimulation {
         this.initialJobsDescriptors = jobs;
         this.simulationSpeedUp = simulationSpeedUp;
         this.queueWaitPenalty = queueWaitPenalty;
-        this.vmCounter = new VmCounter(this.settings.getMaxVmsPerSize());
-        this.vmCounter.initializeCapacity(CloudSimProxy.SMALL, initialVmsCount);
-        this.vmCounter.initializeCapacity(CloudSimProxy.MEDIUM, initialVmsCount);
-        this.vmCounter.initializeCapacity(CloudSimProxy.LARGE, initialVmsCount);
 
         info("Creating simulation: " + identifier);
     }
@@ -80,6 +74,10 @@ public class WrappedSimulation {
                 .collect(Collectors.toList());
         cloudSimProxy = new CloudSimProxy(settings, initialVmsCount, cloudlets, simulationSpeedUp);
         metricsStorage.clear();
+        this.vmCounter = new VmCounter(this.settings.getMaxVmsPerSize());
+        this.vmCounter.initializeCapacity(CloudSimProxy.SMALL, initialVmsCount);
+        this.vmCounter.initializeCapacity(CloudSimProxy.MEDIUM, initialVmsCount);
+        this.vmCounter.initializeCapacity(CloudSimProxy.LARGE, initialVmsCount);
 
         double[] obs = getObservation();
         return new ResetResult(obs);
