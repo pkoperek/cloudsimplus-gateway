@@ -20,6 +20,7 @@ public class WrappedSimulation {
 
     private final List<CloudletDescriptor> initialJobsDescriptors;
     private final double simulationSpeedUp;
+    private final VmCounter vmCounter;
 
     private List<String> metricsNames = Arrays.asList(
             "vmAllocatedRatioHistory",
@@ -51,6 +52,10 @@ public class WrappedSimulation {
         this.initialJobsDescriptors = jobs;
         this.simulationSpeedUp = simulationSpeedUp;
         this.queueWaitPenalty = queueWaitPenalty;
+        this.vmCounter = new VmCounter(this.settings.getMaxVmsPerSize());
+        this.vmCounter.initializeCapacity(CloudSimProxy.SMALL, initialVmsCount);
+        this.vmCounter.initializeCapacity(CloudSimProxy.MEDIUM, initialVmsCount);
+        this.vmCounter.initializeCapacity(CloudSimProxy.LARGE, initialVmsCount);
 
         info("Creating simulation: " + identifier);
     }
@@ -129,24 +134,41 @@ public class WrappedSimulation {
                 break;
             case 1:
                 // adding a new vm
-                cloudSimProxy.addNewVM(CloudSimProxy.SMALL);
+                addNewVM(CloudSimProxy.SMALL);
                 break;
             case 2:
                 // removing randomly one of the vms
-                cloudSimProxy.removeRandomlyVM(CloudSimProxy.SMALL);
+                removeVM(CloudSimProxy.SMALL);
                 break;
             case 3:
-                cloudSimProxy.addNewVM(CloudSimProxy.MEDIUM);
+                addNewVM(CloudSimProxy.MEDIUM);
                 break;
             case 4:
-                cloudSimProxy.removeRandomlyVM(CloudSimProxy.MEDIUM);
+                removeVM(CloudSimProxy.MEDIUM);
                 break;
             case 5:
-                cloudSimProxy.addNewVM(CloudSimProxy.LARGE);
+                addNewVM(CloudSimProxy.LARGE);
                 break;
             case 6:
-                cloudSimProxy.removeRandomlyVM(CloudSimProxy.LARGE);
+                removeVM(CloudSimProxy.LARGE);
                 break;
+        }
+    }
+
+    private void removeVM(String type) {
+        if(cloudSimProxy.removeRandomlyVM(type)) {
+            this.vmCounter.recordRemovedVM(type);
+        } else {
+            logger.info("Removing a VM of type " + type + " requested but the request was ignored");
+        }
+    }
+
+    private void addNewVM(String type) {
+        if(vmCounter.hasCapacity(type)) {
+            cloudSimProxy.addNewVM(type);
+            vmCounter.recordNewVM(type);
+        } else {
+            logger.info("Adding a VM of type " + type + " requested but the request was ignored (MAX_VMS_PER_SIZE reached)");
         }
     }
 

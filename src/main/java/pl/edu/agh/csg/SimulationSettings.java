@@ -15,6 +15,7 @@ public class SimulationSettings {
     private final long datacenterHostsCnt;
     private final long basicVmRam;
     private final long basicVmPeCount;
+    private final long maxVmsPerSize;
 
     public SimulationSettings() {
         // Host size is big enough to host a m5a.2xlarge VM
@@ -29,6 +30,9 @@ public class SimulationSettings {
         datacenterHostsCnt = Long.parseLong(withDefault("DATACENTER_HOSTS_CNT", "3000"));
         basicVmRam = Long.parseLong(withDefault("BASIC_VM_RAM", "8192"));
         basicVmPeCount = Long.parseLong(withDefault("BASIC_VM_PE_CNT", "2"));
+
+        // default is the number of hosts x 4 - on every host we can have up to 4 basic vms
+        maxVmsPerSize = Long.parseLong(withDefault("MAX_VMS_PER_SIZE", String.valueOf(3000*4)));
     }
 
     public double getVmRunningHourlyCost() {
@@ -85,5 +89,9 @@ public class SimulationSettings {
 
     public long getBasicVmRam() {
         return this.basicVmRam;
+    }
+
+    public long getMaxVmsPerSize() {
+        return maxVmsPerSize;
     }
 }

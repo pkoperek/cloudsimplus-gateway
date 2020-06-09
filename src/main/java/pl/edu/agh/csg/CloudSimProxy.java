@@ -63,7 +63,11 @@ public class CloudSimProxy {
         this.nextVmId = 0;
 
         final List<? extends Vm> smallVmList = createVmList(initialVmCount, SMALL);
+        final List<? extends Vm> mediumVmList = createVmList(initialVmCount, MEDIUM);
+        final List<? extends Vm> largeVmList = createVmList(initialVmCount, LARGE);
         broker.submitVmList(smallVmList);
+        broker.submitVmList(mediumVmList);
+        broker.submitVmList(largeVmList);
 
         this.jobs.addAll(inputJobs);
         Collections.sort(this.jobs, new DelayCloudletComparator());
@@ -375,7 +379,7 @@ public class CloudSimProxy {
         logger.debug("VM creating requested, delay: " + delay + " type: " + type);
     }
 
-    public void removeRandomlyVM(String type) {
+    public boolean removeRandomlyVM(String type) {
         List<Vm> vmExecList = broker.getVmExecList();
 
         List<Vm> vmsOfType = vmExecList
@@ -386,8 +390,10 @@ public class CloudSimProxy {
         if (canKillVm(type, vmsOfType.size())) {
             int vmToKillIdx = random.nextInt(vmsOfType.size());
             destroyVm(vmsOfType.get(vmToKillIdx));
+            return true;
         } else {
             logger.warn("Can't kill a VM - only one running");
+            return false;
         }
     }
 
