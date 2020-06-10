@@ -14,8 +14,10 @@ public class VmCost {
     private List<Vm> removedVms = new ArrayList<>();
 
     private final double perHourVMCost;
+    private boolean payForFullHour;
 
-    public VmCost(double perHourVMCost, double speedUp) {
+    public VmCost(double perHourVMCost, double speedUp, boolean payForFullHour) {
+        this.payForFullHour = payForFullHour;
         this.perHourVMCost = perHourVMCost * speedUp;
         this.perSecondVMCost = perHourVMCost * 0.00028; // 1/3600
         this.speedUp = speedUp;
@@ -38,8 +40,8 @@ public class VmCost {
             double m = getSizeMultiplier(vm);
             if(vm.getStartTime() > -1) {
                 if(vm.getStopTime() > -1) {
-                    // vm was stopped - we continue to pay for it within the last running hour
-                    if(clock <= vm.getStopTime() + secondsInHour) {
+                    // vm was stopped - we continue to pay for it within the last running hour if need to
+                    if(payForFullHour && (clock <= vm.getStopTime() + secondsInHour)) {
                         totalCost += perSecondVMCost * m;
                     } else {
                         toRemove.add(vm);
