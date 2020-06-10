@@ -40,17 +40,17 @@ public class VmCost {
                 if(vm.getStopTime() > -1) {
                     // vm was stopped - we continue to pay for it within the last running hour
                     if(clock <= vm.getStopTime() + secondsInHour) {
-                        totalCost += perSecondVMCost;
+                        totalCost += perSecondVMCost * m;
                     } else {
                         toRemove.add(vm);
                     }
                 } else {
                     // vm still running - just
-                    totalCost += perSecondVMCost ;
+                    totalCost += perSecondVMCost * m;
                 }
             } else {
                 // created - not running yet, need to pay for it
-                totalCost += perSecondVMCost;
+                totalCost += perSecondVMCost * m;
             }
         }
         removedVms.addAll(toRemove);
