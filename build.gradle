@@ -41,6 +41,7 @@ dependencies {
     compile group: 'org.apache.commons', name: 'commons-collections4', version: '4.0'
     compile 'com.google.code.gson:gson:2.8.5'
     compile group: 'org.postgresql', name: 'postgresql', version: '42.2.5'
+    compile group: 'org.hamcrest', name: 'hamcrest', version: '2.2'
     
     testCompile 'junit:junit:4.12'
 }

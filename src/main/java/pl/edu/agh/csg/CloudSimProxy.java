@@ -468,7 +468,7 @@ public class CloudSimProxy {
     }
 
     public double getRunningCost() {
-        return vmCost.getVMCostPerSecond(this.clock());
+        return vmCost.getVMCostPerIteration(this.clock());
     }
 
     class CloudletScheduler extends CloudletSchedulerSpaceShared {

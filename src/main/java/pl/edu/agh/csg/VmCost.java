@@ -7,21 +7,23 @@ import java.util.List;
 
 public class VmCost {
 
-    private final double secondsInHour;
-    private final double perSecondVMCost;
+    private final double secondsInIteration;
+    private final double perIterationSmallVMCost;
     private final double speedUp;
     private List<Vm> createdVms = new ArrayList<>();
     private List<Vm> removedVms = new ArrayList<>();
 
-    private final double perHourVMCost;
     private boolean payForFullHour;
+    private double iterationsInHour;
 
     public VmCost(double perHourVMCost, double speedUp, boolean payForFullHour) {
         this.payForFullHour = payForFullHour;
-        this.perHourVMCost = perHourVMCost * speedUp;
-        this.perSecondVMCost = perHourVMCost * 0.00028; // 1/3600
         this.speedUp = speedUp;
-        this.secondsInHour = 60 * 60 / this.speedUp;
+        this.secondsInIteration = this.speedUp;
+        this.iterationsInHour = 3600 / this.secondsInIteration;
+
+        final double perSecondVMCost = perHourVMCost * 0.00028; // 1/3600
+        this.perIterationSmallVMCost = perSecondVMCost * secondsInIteration;
     }
 
     public void notifyCreateVM(Vm vm) {
@@ -32,27 +34,28 @@ public class VmCost {
         createdVms.clear();
     }
 
-    public double getVMCostPerSecond(double clock) {
+    public double getVMCostPerIteration(double clock) {
         double totalCost = 0.0;
         List<Vm> toRemove = new ArrayList<>();
         for(Vm vm : createdVms) {
             // check if the vm is started
             double m = getSizeMultiplier(vm);
+            final double perIterationVMCost = perIterationSmallVMCost * m;
             if(vm.getStartTime() > -1) {
                 if(vm.getStopTime() > -1) {
                     // vm was stopped - we continue to pay for it within the last running hour if need to
-                    if(payForFullHour && (clock <= vm.getStopTime() + secondsInHour)) {
-                        totalCost += perSecondVMCost * m;
+                    if(payForFullHour && (clock <= vm.getStopTime() + iterationsInHour)) {
+                        totalCost += perIterationVMCost;
                     } else {
                         toRemove.add(vm);
                     }
                 } else {
                     // vm still running - just
-                    totalCost += perSecondVMCost * m;
+                    totalCost += perIterationVMCost;
                 }
             } else {
                 // created - not running yet, need to pay for it
-                totalCost += perSecondVMCost * m;
+                totalCost += perIterationVMCost;
             }
         }
         removedVms.addAll(toRemove);
@@ -70,7 +73,4 @@ public class VmCost {
         return 1.0;
     }
 
-    public double getPerHourVMCost() {
-        return perHourVMCost;
-    }
 }
