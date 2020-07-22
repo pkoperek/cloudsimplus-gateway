@@ -58,6 +58,12 @@ public class SimulationFactory {
         final String splitLargeJobsStr = maybeParameters.getOrDefault(SPLIT_LARGE_JOBS, SPLIT_LARGE_JOBS_DEFAULT);
         final boolean splitLargeJobs = Boolean.valueOf(splitLargeJobsStr.toLowerCase());
 
+        logger.info("Simulation parameters: ");
+        logger.info("-> initialVmCount: " + initialVmCount);
+        logger.info("-> simulationSpeedUp: " + simulationSpeedUp);
+        logger.info("-> queueWaitPenalty: " + queueWaitPenalty);
+        logger.info("-> splitLargeJobs: " + splitLargeJobs);
+
         final List<CloudletDescriptor> jobs;
 
         switch (sourceOfJobs) {
