@@ -52,7 +52,10 @@ public class CloudSimProxy {
     private int previousIntervalJobId = 0;
     private int nextVmId;
 
-    public CloudSimProxy(SimulationSettings settings, int initialVmCount, List<Cloudlet> inputJobs, double simulationSpeedUp) {
+    public CloudSimProxy(SimulationSettings settings,
+                         Map<String, Integer> initialVmsCount,
+                         List<Cloudlet> inputJobs,
+                         double simulationSpeedUp) {
         this.settings = settings;
         this.cloudSim = new CloudSim(0.1);
         this.broker = createDatacenterBroker();
@@ -64,9 +67,9 @@ public class CloudSimProxy {
 
         this.nextVmId = 0;
 
-        final List<? extends Vm> smallVmList = createVmList(initialVmCount, SMALL);
-        final List<? extends Vm> mediumVmList = createVmList(initialVmCount, MEDIUM);
-        final List<? extends Vm> largeVmList = createVmList(initialVmCount, LARGE);
+        final List<? extends Vm> smallVmList = createVmList(initialVmsCount.get(SMALL), SMALL);
+        final List<? extends Vm> mediumVmList = createVmList(initialVmsCount.get(MEDIUM), MEDIUM);
+        final List<? extends Vm> largeVmList = createVmList(initialVmsCount.get(LARGE), LARGE);
         broker.submitVmList(smallVmList);
         broker.submitVmList(mediumVmList);
         broker.submitVmList(largeVmList);

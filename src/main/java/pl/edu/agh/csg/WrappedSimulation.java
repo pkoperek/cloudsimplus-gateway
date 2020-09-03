@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import static org.apache.commons.math3.stat.StatUtils.percentile;
@@ -33,14 +34,14 @@ public class WrappedSimulation {
     private final Gson gson = new Gson();
     private final double INTERVAL = 1.0;
     private final String identifier;
-    private final int initialVmsCount;
+    private final Map<String, Integer> initialVmsCount;
     private final SimulationSettings settings;
     private CloudSimProxy cloudSimProxy;
     private VmCounter vmCounter;
 
     public WrappedSimulation(SimulationSettings simulationSettings,
                              String identifier,
-                             int initialVmsCount,
+                             Map<String, Integer> initialVmsCount,
                              double simulationSpeedUp,
                              double queueWaitPenalty,
                              List<CloudletDescriptor> jobs) {
@@ -75,9 +76,9 @@ public class WrappedSimulation {
         cloudSimProxy = new CloudSimProxy(settings, initialVmsCount, cloudlets, simulationSpeedUp);
         metricsStorage.clear();
         this.vmCounter = new VmCounter(this.settings.getMaxVmsPerSize());
-        this.vmCounter.initializeCapacity(CloudSimProxy.SMALL, initialVmsCount);
-        this.vmCounter.initializeCapacity(CloudSimProxy.MEDIUM, initialVmsCount);
-        this.vmCounter.initializeCapacity(CloudSimProxy.LARGE, initialVmsCount);
+        this.vmCounter.initializeCapacity(CloudSimProxy.SMALL, initialVmsCount.get(CloudSimProxy.SMALL));
+        this.vmCounter.initializeCapacity(CloudSimProxy.MEDIUM, initialVmsCount.get(CloudSimProxy.MEDIUM));
+        this.vmCounter.initializeCapacity(CloudSimProxy.LARGE, initialVmsCount.get(CloudSimProxy.LARGE));
 
         double[] obs = getObservation();
         return new ResetResult(obs);

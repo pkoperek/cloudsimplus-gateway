@@ -1,11 +1,11 @@
 package pl.edu.agh.csg;
 
-import static org.junit.Assert.*;
-
 import com.google.gson.Gson;
 import org.junit.Test;
 
 import java.util.*;
+
+import static org.junit.Assert.assertEquals;
 
 public class IntegrationTest {
 
@@ -67,7 +67,7 @@ public class IntegrationTest {
         }
 
         Map<String, String> parameters = new HashMap<>();
-        parameters.put(SimulationFactory.INITIAL_VM_COUNT, "1");
+        parameters.put(SimulationFactory.INITIAL_L_VM_COUNT, "1");
         parameters.put(SimulationFactory.SOURCE_OF_JOBS_PARAMS_JOBS, gson.toJson(jobs));
 
         final String simulationId = multiSimulationEnvironment.createSimulation(parameters);
@@ -103,7 +103,7 @@ public class IntegrationTest {
         }
 
         Map<String, String> parameters = new HashMap<>();
-        parameters.put(SimulationFactory.INITIAL_VM_COUNT, "10");
+        parameters.put(SimulationFactory.INITIAL_L_VM_COUNT, "10");
         parameters.put(SimulationFactory.SOURCE_OF_JOBS_PARAMS_JOBS, gson.toJson(jobs));
 
         final String simulationId = multiSimulationEnvironment.createSimulation(parameters);

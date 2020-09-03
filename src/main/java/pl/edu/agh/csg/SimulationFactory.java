@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -25,8 +26,10 @@ public class SimulationFactory {
     public static final String SIMULATION_SPEEDUP = "SIMULATION_SPEEDUP";
     public static final String SIMULATION_SPEEDUP_DEFAULT = "1.0";
 
-    public static final String INITIAL_VM_COUNT = "INITIAL_VM_COUNT";
-    public static final String INITIAL_VM_COUNT_DEFAULT = "10";
+    public static final String INITIAL_L_VM_COUNT = "INITIAL_L_VM_COUNT";
+    public static final String INITIAL_M_VM_COUNT = "INITIAL_M_VM_COUNT";
+    public static final String INITIAL_S_VM_COUNT = "INITIAL_S_VM_COUNT";
+    public static final String INITIAL_VM_COUNT_DEFAULT = "1";
 
     public static final String SOURCE_OF_JOBS_PARAMS = "PARAMS";
     public static final String SOURCE_OF_JOBS_PARAMS_JOBS = "JOBS";
@@ -44,8 +47,13 @@ public class SimulationFactory {
         this.created++;
 
         // get number of initial vms in
-        final String initialVmCountStr = maybeParameters.getOrDefault(INITIAL_VM_COUNT, INITIAL_VM_COUNT_DEFAULT);
-        final int initialVmCount = Integer.parseInt(initialVmCountStr);
+        final String initialSVmCountStr = maybeParameters.getOrDefault(INITIAL_S_VM_COUNT, INITIAL_VM_COUNT_DEFAULT);
+        final int initialSVmCount = Integer.parseInt(initialSVmCountStr);
+        final String initialMVmCountStr = maybeParameters.getOrDefault(INITIAL_M_VM_COUNT, INITIAL_VM_COUNT_DEFAULT);
+        final int initialMVmCount = Integer.parseInt(initialMVmCountStr);
+        final String initialLVmCountStr = maybeParameters.getOrDefault(INITIAL_L_VM_COUNT, INITIAL_VM_COUNT_DEFAULT);
+        final int initialLVmCount = Integer.parseInt(initialLVmCountStr);
+
 
         final String simulationSpeedUpStr = maybeParameters.getOrDefault(SIMULATION_SPEEDUP, SIMULATION_SPEEDUP_DEFAULT);
         final double simulationSpeedUp = Double.valueOf(simulationSpeedUpStr);
@@ -59,7 +67,9 @@ public class SimulationFactory {
         final boolean splitLargeJobs = Boolean.valueOf(splitLargeJobsStr.toLowerCase());
 
         logger.info("Simulation parameters: ");
-        logger.info("-> initialVmCount: " + initialVmCount);
+        logger.info("-> initialSVmCount: " + initialSVmCount);
+        logger.info("-> initialMVmCount: " + initialMVmCount);
+        logger.info("-> initialLVmCount: " + initialLVmCount);
         logger.info("-> simulationSpeedUp: " + simulationSpeedUp);
         logger.info("-> queueWaitPenalty: " + queueWaitPenalty);
         logger.info("-> splitLargeJobs: " + splitLargeJobs);
@@ -89,7 +99,17 @@ public class SimulationFactory {
             splitted = jobs;
         }
 
-        return new WrappedSimulation(settings, identifier, initialVmCount, simulationSpeedUp, queueWaitPenalty, splitted);
+        return new WrappedSimulation(
+                settings,
+                identifier,
+                new HashMap<String, Integer>() {{
+                    this.put(CloudSimProxy.SMALL, initialSVmCount);
+                    this.put(CloudSimProxy.MEDIUM, initialMVmCount);
+                    this.put(CloudSimProxy.LARGE, initialLVmCount);
+                }},
+                simulationSpeedUp,
+                queueWaitPenalty,
+                splitted);
     }
 
     private List<CloudletDescriptor> splitLargeJobs(List<CloudletDescriptor> jobs, SimulationSettings settings) {
