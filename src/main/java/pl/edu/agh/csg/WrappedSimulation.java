@@ -36,6 +36,7 @@ public class WrappedSimulation {
     private final String identifier;
     private final Map<String, Integer> initialVmsCount;
     private final SimulationSettings settings;
+    private final SimulationHistory simulationHistory;
     private CloudSimProxy cloudSimProxy;
     private VmCounter vmCounter;
 
@@ -51,6 +52,7 @@ public class WrappedSimulation {
         this.initialJobsDescriptors = jobs;
         this.simulationSpeedUp = simulationSpeedUp;
         this.queueWaitPenalty = queueWaitPenalty;
+        this.simulationHistory = new SimulationHistory();
 
         info("Creating simulation: " + identifier);
     }
@@ -118,6 +120,18 @@ public class WrappedSimulation {
 
         debug("Step finished (action: " + action + ") is done: " + done +
                 " Length of future events queue: " + cloudSimProxy.getNumberOfFutureEvents());
+
+        this.simulationHistory.record("action", action);
+        this.simulationHistory.record("reward", reward);
+        this.simulationHistory.record("resourceCost", cloudSimProxy.getRunningCost());
+        this.simulationHistory.record("small_vms", this.vmCounter.getStartedVms(CloudSimProxy.SMALL));
+        this.simulationHistory.record("medium_vms", this.vmCounter.getStartedVms(CloudSimProxy.MEDIUM));
+        this.simulationHistory.record("large_vms", this.vmCounter.getStartedVms(CloudSimProxy.LARGE));
+
+        if(!cloudSimProxy.isRunning()) {
+            this.simulationHistory.logHistory();
+            this.simulationHistory.reset();
+        }
 
         return new SimulationStepResult(
                 done,

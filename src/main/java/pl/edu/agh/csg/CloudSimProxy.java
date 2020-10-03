@@ -301,9 +301,6 @@ public class CloudSimProxy {
             toAddJobId++;
         }
 
-        final double step = this.clock();
-        logger.debug("Job submission:  " + step + ", " + jobsToSubmit.size() + ", " + addedMips);
-
         if (jobsToSubmit.size() > 0) {
             broker.submitCloudletList(jobsToSubmit);
             potentiallyWaitingJobs.addAll(jobsToSubmit);
@@ -312,10 +309,6 @@ public class CloudSimProxy {
 
     public boolean isRunning() {
         return cloudSim.isRunning();
-    }
-
-    public double getNumberOfActiveVMs() {
-        return (double) broker.getVmExecList().size();
     }
 
     public long getNumberOfActiveCores() {
