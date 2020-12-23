@@ -1,4 +1,4 @@
-IMAGE_W_TAG := $(shell grep tag build.gradle | cut -d\' -f2)
+IMAGE_W_TAG := $(shell grep dockerImageTag build.gradle | cut -d\' -f2)
 
 release:
 	@echo IMAGE_W_TAG  $(IMAGE_W_TAG)
