@@ -39,6 +39,26 @@ public class SimulationSettings {
         payingForTheFullHour = Boolean.parseBoolean(withDefault("PAYING_FOR_THE_FULL_HOUR", "false"));
     }
 
+    @Override
+    public String toString() {
+        return "SimulationSettings{" +
+                "\nvmRunningHourlyCost=" + vmRunningHourlyCost +
+                "\n, hostPeMips=" + hostPeMips +
+                "\n, hostBw=" + hostBw +
+                "\n, hostRam=" + hostRam +
+                "\n, hostSize=" + hostSize +
+                "\n, hostPeCnt=" + hostPeCnt +
+                "\n, defaultInitialVmCount=" + defaultInitialVmCount +
+                "\n, queueWaitPenalty=" + queueWaitPenalty +
+                "\n, datacenterHostsCnt=" + datacenterHostsCnt +
+                "\n, basicVmRam=" + basicVmRam +
+                "\n, basicVmPeCount=" + basicVmPeCount +
+                "\n, maxVmsPerSize=" + maxVmsPerSize +
+                "\n, printJobsPeriodically=" + printJobsPeriodically +
+                "\n, payingForTheFullHour=" + payingForTheFullHour +
+                "\n}";
+    }
+
     public double getVmRunningHourlyCost() {
         return vmRunningHourlyCost;
     }

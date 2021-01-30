@@ -90,6 +90,9 @@ public class SimulationFactory {
         }
 
         final SimulationSettings settings = new SimulationSettings();
+        logger.info("Simulation settings dump");
+        logger.info(settings.toString());
+
         final List<CloudletDescriptor> splitted;
         if(splitLargeJobs) {
             logger.info("Splitting large jobs");
