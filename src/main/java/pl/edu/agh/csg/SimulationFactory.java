@@ -54,7 +54,6 @@ public class SimulationFactory {
         final String initialLVmCountStr = maybeParameters.getOrDefault(INITIAL_L_VM_COUNT, INITIAL_VM_COUNT_DEFAULT);
         final int initialLVmCount = Integer.parseInt(initialLVmCountStr);
 
-
         final String simulationSpeedUpStr = maybeParameters.getOrDefault(SIMULATION_SPEEDUP, SIMULATION_SPEEDUP_DEFAULT);
         final double simulationSpeedUp = Double.valueOf(simulationSpeedUpStr);
 
@@ -164,15 +163,17 @@ public class SimulationFactory {
     }
 
     private CloudletDescriptor speedUp(CloudletDescriptor cloudletDescriptor, double simulationSpeedUp) {
-        final long newMi = (long) (cloudletDescriptor.getMi() / simulationSpeedUp);
-        final long mi = newMi == 0 ? 1 : newMi;
+        final long cloudletDescriptorMi = cloudletDescriptor.getMi();
+        final long nonNegativeMi = cloudletDescriptorMi < 1 ? 1 : cloudletDescriptorMi;
+        final long speededUpMi = (long) (nonNegativeMi / simulationSpeedUp);
+        final long newMi = speededUpMi == 0 ? 1 : speededUpMi;
         final long submissionDelayReal = cloudletDescriptor.getSubmissionDelay() < 0 ? 0L : cloudletDescriptor.getSubmissionDelay();
         final long submissionDelay = (long) (submissionDelayReal / simulationSpeedUp);
         final int numberOfCores = cloudletDescriptor.getNumberOfCores() < 0 ? 1 : cloudletDescriptor.getNumberOfCores();
         return new CloudletDescriptor(
                 cloudletDescriptor.getJobId(),
                 submissionDelay,
-                mi,
+                newMi,
                 numberOfCores
         );
     }

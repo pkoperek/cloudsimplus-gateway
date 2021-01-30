@@ -1,5 +1,7 @@
 package pl.edu.agh.csg;
 
+import java.util.Arrays;
+
 public class SimulationStepResult {
 
     private final boolean done;
@@ -22,5 +24,14 @@ public class SimulationStepResult {
 
     public double getReward() {
         return reward;
+    }
+
+    @Override
+    public String toString() {
+        return "SimulationStepResult{" +
+                "done=" + done +
+                ", obs=" + Arrays.toString(obs) +
+                ", reward=" + reward +
+                '}';
     }
 }

@@ -45,6 +45,7 @@ dependencies {
     compile group: 'org.hamcrest', name: 'hamcrest', version: '2.2'
     
     testCompile 'junit:junit:4.12'
+    testCompile 'com.github.stefanbirkner:system-lambda:1.2.0'
 }
 
 docker {
