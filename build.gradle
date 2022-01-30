@@ -30,7 +30,7 @@ repositories {
 
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
-def dockerImageTag = 'pkoperek/cloudsimplus-gateway:1.8.2'
+def dockerImageTag = 'pkoperek/cloudsimplus-gateway:1.8.3'
 
 // In this section you declare the dependencies for your production and test code
 dependencies {
@@ -52,10 +52,10 @@ docker {
     url = 'unix:///var/run/docker.sock'
     javaApplication {
         baseImage = 'openjdk:11-jre'
-        maintainer = 'Pawel Koperek "pkoperek@gmail.com""'
+        maintainer = 'Pawel Koperek "pkoperek@gmail.com"'
         ports = [25333]
         tag = dockerImageTag
-        jvmArgs = ['-Xms1G', '-Xmx30G']
+        jvmArgs = ['-Xms1G', '-Xmx4G']
     }
 }
 
