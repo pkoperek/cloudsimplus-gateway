@@ -1,6 +1,5 @@
 package pl.edu.agh.csg;
 
-import org.apache.commons.lang3.ArrayUtils;
 import org.cloudbus.cloudsim.allocationpolicies.VmAllocationPolicySimple;
 import org.cloudbus.cloudsim.brokers.DatacenterBroker;
 import org.cloudbus.cloudsim.brokers.DatacenterBrokerSimple;
@@ -24,7 +23,15 @@ import org.cloudbus.cloudsim.vms.VmSimple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Random;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -35,7 +42,6 @@ public class CloudSimProxy {
     public static final String LARGE = "L";
 
     private static final Logger logger = LoggerFactory.getLogger(CloudSimProxy.class.getName());
-    private static final Double[] double_arr = new Double[0];
 
     private final DatacenterBroker broker;
     private final CloudSim cloudSim;
@@ -179,6 +185,7 @@ public class CloudSimProxy {
     }
 
     public void runFor(final double interval) {
+        long start = System.nanoTime();
         final double target = this.cloudSim.clock() + interval;
 
         scheduleJobsUntil(target);
@@ -213,6 +220,11 @@ public class CloudSimProxy {
         if(shouldPrintJobStats()) {
             printJobStats();
         }
+
+        long end = System.nanoTime();
+        long diff = end - start;
+        double diffInSec = ((double)diff) / 1_000_000_000L;
+        logger.info("runFor took " + diff + "ns / " + diffInSec + "s");
     }
 
     private boolean shouldPrintJobStats() {
@@ -364,17 +376,6 @@ public class CloudSimProxy {
             memPercentUsage[i] = vm.getRam().getPercentUtilization();
         }
         return memPercentUsage;
-    }
-
-    public double[] getWaitTimesFromLastInterval() {
-        List<Double> waitingTimes = new ArrayList<>();
-        for (Cloudlet cloudlet : this.potentiallyWaitingJobs) {
-            double systemEntryTime = this.originalSubmissionDelay.get(cloudlet.getId());
-            double realWaitingTime = cloudSim.clock() - systemEntryTime;
-            waitingTimes.add(realWaitingTime);
-        }
-
-        return ArrayUtils.toPrimitive(waitingTimes.toArray(double_arr));
     }
 
     public void addNewVM(String type) {
