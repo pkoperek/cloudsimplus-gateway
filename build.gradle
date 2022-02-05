@@ -30,7 +30,7 @@ repositories {
 
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
-def dockerImageTag = 'pkoperek/cloudsimplus-gateway:1.8.6'
+def dockerImageTag = 'pkoperek/cloudsimplus-gateway:1.8.7'
 
 // In this section you declare the dependencies for your production and test code
 dependencies {

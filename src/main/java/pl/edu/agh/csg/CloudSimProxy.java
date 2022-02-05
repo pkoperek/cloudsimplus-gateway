@@ -230,7 +230,7 @@ public class CloudSimProxy {
         // to avoid OOMing we need to clear that list
         // it is a safe operation in our environment, because that list is only used in
         // CloudSim+ when a VM is being upscaled (we don't do that)
-        if(settings.isStoreCreatedCloudletsDatacenterBroker()) {
+        if(!settings.isStoreCreatedCloudletsDatacenterBroker()) {
             this.broker.getCloudletCreatedList().clear();
         }
 
