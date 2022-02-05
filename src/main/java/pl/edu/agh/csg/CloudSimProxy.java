@@ -225,10 +225,23 @@ public class CloudSimProxy {
             printJobStats();
         }
 
+        // the size of cloudletsCreatedList grows to huge numbers
+        // as we re-schedule cloudlets when VMs get killed
+        // to avoid OOMing we need to clear that list
+        // it is a safe operation in our environment, because that list is only used in
+        // CloudSim+ when a VM is being upscaled (we don't do that)
+        if(settings.isStoreCreatedCloudletsDatacenterBroker()) {
+            this.broker.getCloudletCreatedList().clear();
+        }
+
         long end = System.nanoTime();
         long diff = end - start;
         double diffInSec = ((double)diff) / 1_000_000_000L;
-        logger.info("runFor took " + diff + "ns / " + diffInSec + "s");
+
+        // TODO: can be removed after validating the fix of OOM
+        // should always be zero
+        final int debugBrokerCreatedListSize = this.broker.getCloudletCreatedList().size();
+        logger.info("runFor took " + diff + "ns / " + diffInSec + "s (DEBUG: " + debugBrokerCreatedListSize + ")");
     }
 
     private boolean shouldPrintJobStats() {

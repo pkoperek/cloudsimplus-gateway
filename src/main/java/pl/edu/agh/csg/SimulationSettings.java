@@ -18,6 +18,7 @@ public class SimulationSettings {
     private final long maxVmsPerSize;
     private final boolean printJobsPeriodically;
     private final boolean payingForTheFullHour;
+    private final boolean storeCreatedCloudletsDatacenterBroker;
 
     public SimulationSettings() {
         // Host size is big enough to host a m5a.2xlarge VM
@@ -37,6 +38,7 @@ public class SimulationSettings {
         maxVmsPerSize = Long.parseLong(withDefault("MAX_VMS_PER_SIZE", "3000"));
         printJobsPeriodically = Boolean.parseBoolean(withDefault("PRINT_JOBS_PERIODICALLY", "false"));
         payingForTheFullHour = Boolean.parseBoolean(withDefault("PAYING_FOR_THE_FULL_HOUR", "false"));
+        storeCreatedCloudletsDatacenterBroker = Boolean.parseBoolean(withDefault("STORE_CREATED_CLOUDLETS_DATACENTER_BROKER", "false"));
     }
 
     @Override
@@ -130,5 +132,9 @@ public class SimulationSettings {
 
     public boolean isPayingForTheFullHour() {
         return payingForTheFullHour;
+    }
+
+    public boolean isStoreCreatedCloudletsDatacenterBroker() {
+        return storeCreatedCloudletsDatacenterBroker;
     }
 }
