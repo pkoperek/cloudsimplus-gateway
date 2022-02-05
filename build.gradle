@@ -30,7 +30,7 @@ repositories {
 
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
-def dockerImageTag = 'pkoperek/cloudsimplus-gateway:1.8.3'
+def dockerImageTag = 'pkoperek/cloudsimplus-gateway:1.8.5'
 
 // In this section you declare the dependencies for your production and test code
 dependencies {
@@ -43,7 +43,7 @@ dependencies {
     compile 'com.google.code.gson:gson:2.8.5'
     compile group: 'org.postgresql', name: 'postgresql', version: '42.2.5'
     compile group: 'org.hamcrest', name: 'hamcrest', version: '2.2'
-    
+
     testCompile 'junit:junit:4.12'
     testCompile 'com.github.stefanbirkner:system-lambda:1.2.0'
 }
@@ -60,7 +60,7 @@ docker {
 }
 
 dockerCreateDockerfile {
-    environmentVariable 'JAVA_OPTS', '-XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap'
+    environmentVariable 'JAVA_OPTS', '-XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/external'
 }
 
 mainClassName = "pl.edu.agh.csg.Main"

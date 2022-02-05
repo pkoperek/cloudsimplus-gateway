@@ -70,7 +70,7 @@ public class WrappedSimulation {
     }
 
     public ResetResult reset() {
-        debug("Reset initiated");
+        info("Reset initiated");
         List<Cloudlet> cloudlets = initialJobsDescriptors
                 .stream()
                 .map(cloudletDescriptor -> cloudletDescriptor.toCloudlet())

@@ -185,6 +185,10 @@ public class CloudSimProxy {
     }
 
     public void runFor(final double interval) {
+        if(!this.isRunning()) {
+            throw new RuntimeException("The simulation is not running - please reset or create a new one!");
+        }
+
         long start = System.nanoTime();
         final double target = this.cloudSim.clock() + interval;
 
