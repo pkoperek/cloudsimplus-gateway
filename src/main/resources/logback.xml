@@ -22,7 +22,7 @@
   </appender>
 
   <logger name="DatacenterBroker" level="ERROR" />
-  <logger name="pl.edu.agh.csg.WrappedSimulation" level="INFO" />
+<!--  <logger name="pl.edu.agh.csg.WrappedSimulation" level="INFO" />-->
   <logger name="CloudletSchedulerAbstract" level="ERROR" />
 
   <root level="DEBUG">

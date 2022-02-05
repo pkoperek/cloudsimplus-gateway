@@ -110,16 +110,19 @@ public class WrappedSimulation {
         }
 
         debug("Executing action: " + action);
+
+        long startAction = System.nanoTime();
         executeAction(action);
+        long stopAction = System.nanoTime();
         cloudSimProxy.runFor(INTERVAL);
+
+        long startMetrics = System.nanoTime();
         collectMetrics();
+        long stopMetrics = System.nanoTime();
 
         boolean done = !cloudSimProxy.isRunning();
         double[] observation = getObservation();
         double reward = calculateReward();
-
-        debug("Step finished (action: " + action + ") is done: " + done +
-                " Length of future events queue: " + cloudSimProxy.getNumberOfFutureEvents());
 
         this.simulationHistory.record("action", action);
         this.simulationHistory.record("reward", reward);
@@ -132,6 +135,13 @@ public class WrappedSimulation {
             this.simulationHistory.logHistory();
             this.simulationHistory.reset();
         }
+
+        double metricsTime = (stopMetrics - startMetrics) / 1_000_000_000d;
+        double actionTime = (stopAction - startAction) / 1_000_000_000d;
+        debug("Step finished (action: " + action + ") is done: " + done +
+                " Length of future events queue: " + cloudSimProxy.getNumberOfFutureEvents() +
+                " Metrics (s): " + metricsTime +
+                " Action (s): " + actionTime);
 
         return new SimulationStepResult(
                 done,
