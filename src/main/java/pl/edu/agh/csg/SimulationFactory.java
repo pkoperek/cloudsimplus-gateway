@@ -115,7 +115,14 @@ public class SimulationFactory {
     }
 
     private List<CloudletDescriptor> splitLargeJobs(List<CloudletDescriptor> jobs, SimulationSettings settings) {
-        final int hostPeCnt = (int) settings.getBasicVmPeCnt();
+        // There is a bug in CloudletSchedulerAbstract:cloudletExecutedInstructionsForTimeSpan
+        // The bug is that we take into the account only a single core of a PE
+        // when we calculate the available MIPS per cloudlet. So we artificially limit
+        // the parallelism to 1 core per task even if there is nothing else to process.
+        // (in practice the cloudlet blocks two cores, but uses only one! so the
+        // processing time is 2x of what is expected).
+        //final int hostPeCnt = (int) settings.getBasicVmPeCnt();
+        final int hostPeCnt = 1;
 
         int splittedId = jobs.size() * 10;
 

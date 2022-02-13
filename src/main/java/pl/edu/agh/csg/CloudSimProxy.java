@@ -241,7 +241,7 @@ public class CloudSimProxy {
         // TODO: can be removed after validating the fix of OOM
         // should always be zero
         final int debugBrokerCreatedListSize = this.broker.getCloudletCreatedList().size();
-        logger.info("runFor took " + diff + "ns / " + diffInSec + "s (DEBUG: " + debugBrokerCreatedListSize + ")");
+        logger.info("runFor (" + this.clock() + ") took " + diff + "ns / " + diffInSec + "s (DEBUG: " + debugBrokerCreatedListSize + ")");
     }
 
     private boolean shouldPrintJobStats() {
