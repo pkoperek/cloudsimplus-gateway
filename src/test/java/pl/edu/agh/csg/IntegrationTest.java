@@ -3,9 +3,14 @@ package pl.edu.agh.csg;
 import com.google.gson.Gson;
 import org.junit.Test;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 
 public class IntegrationTest {
 
@@ -145,6 +150,55 @@ public class IntegrationTest {
             stepsExecuted++;
         }
         multiSimulationEnvironment.close(simulationId);
+    }
+
+    @Test
+    public void testProcessingAllCloudlets() {
+        // scenario:
+        // 1. we submit jobs at delay 5
+        // 2. we have 2S, 1M, 1L VMs
+        // 3. we submit enough to overload the system (we have 2+2+4+8 cores, so we submit for 18 cores) for 10 iterations
+        //    there should be 2 cloudlets assigned to a VM but not executing
+        // 5. we delete the additional S machine at time 10. (at 50% of processing of the accepted jobs)
+        // 6. we see what happens to the jobs
+
+        List<CloudletDescriptor> jobs = new ArrayList<>();
+        jobs.add(new CloudletDescriptor(1, 5, 100*10000*10, 100));
+
+        Map<String, String> parameters = new HashMap<>();
+        parameters.put(SimulationFactory.INITIAL_S_VM_COUNT, "2");
+        parameters.put(SimulationFactory.SOURCE_OF_JOBS_PARAMS_JOBS, gson.toJson(jobs));
+
+        final String simulationId = multiSimulationEnvironment.createSimulation(parameters);
+
+        multiSimulationEnvironment.reset(simulationId);
+        int stepsExecuted = 1;
+        SimulationStepResult step = multiSimulationEnvironment.step(simulationId, 0);
+
+        while (!step.isDone()) {
+            System.out.println("Executing step: " + stepsExecuted);
+
+            if (stepsExecuted % 4 == 1) {
+                step = multiSimulationEnvironment.step(simulationId, 2);
+            } else if(stepsExecuted % 4 == 2) {
+                step = multiSimulationEnvironment.step(simulationId, 1);
+            } else {
+                step = multiSimulationEnvironment.step(simulationId, 0);
+            }
+
+            System.out.println("Observations: " + Arrays.toString(step.getObs()) + " " + multiSimulationEnvironment.clock(simulationId));
+            stepsExecuted++;
+
+            if(stepsExecuted == 1000) {
+                break;
+            }
+        }
+        final WrappedSimulation wrappedSimulation = multiSimulationEnvironment.retrieveValidSimulation(simulationId);
+        CloudSimProxy cloudSimProxy = wrappedSimulation.getSimulation();
+        cloudSimProxy.printJobStats();
+        multiSimulationEnvironment.close(simulationId);
+
+        assertNotEquals(1000, stepsExecuted);
     }
 
 }

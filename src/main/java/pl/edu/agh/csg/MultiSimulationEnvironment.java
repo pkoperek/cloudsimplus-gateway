@@ -71,7 +71,7 @@ public class MultiSimulationEnvironment {
         return simulation.clock();
     }
 
-    private WrappedSimulation retrieveValidSimulation(String simulationIdentifier) {
+    WrappedSimulation retrieveValidSimulation(String simulationIdentifier) {
         validateIdentifier(simulationIdentifier);
 
         return simulations.get(simulationIdentifier);

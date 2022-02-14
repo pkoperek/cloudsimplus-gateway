@@ -295,4 +295,8 @@ public class WrappedSimulation {
     public double clock() {
         return cloudSimProxy.clock();
     }
+
+    public CloudSimProxy getSimulation() {
+        return cloudSimProxy;
+    }
 }
