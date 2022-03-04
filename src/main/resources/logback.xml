@@ -25,7 +25,7 @@
 <!--  <logger name="pl.edu.agh.csg.WrappedSimulation" level="INFO" />-->
   <logger name="CloudletSchedulerAbstract" level="ERROR" />
 
-  <root level="DEBUG">
+  <root level="INFO">
     <appender-ref ref="STDOUT"/>
     <appender-ref ref="FILE"/>
   </root>

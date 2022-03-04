@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 class OptimizedCloudletScheduler extends CloudletSchedulerSpaceShared {
 
@@ -66,12 +67,21 @@ class OptimizedCloudletScheduler extends CloudletSchedulerSpaceShared {
         field.set(this, value);
     }
 
+    private Object getPrivateFieldValue(String fieldName, Object source) throws IllegalAccessException, NoSuchFieldException {
+        final Field field = CloudletSchedulerAbstract.class.getDeclaredField(fieldName);
+        field.setAccessible(true);
+        return field.get(source);
+    }
+
     // It is safe to override this function: it is used only in one place - DatacenterBrokerAbstract:827
     @Override
     public void clear() {
         try {
             setPrivateField("cloudletWaitingList", new ArrayList<>());
             setPrivateField("cloudletExecList", new ArrayList<>());
+
+            Set cloudletReturnedList = (Set) getPrivateFieldValue("cloudletReturnedList", this);
+            cloudletReturnedList.clear();
         } catch (NoSuchFieldException | IllegalAccessException e) {
             e.printStackTrace();
         }

@@ -2,8 +2,17 @@ package pl.edu.agh.csg;
 
 import org.cloudbus.cloudsim.brokers.DatacenterBrokerSimple;
 import org.cloudbus.cloudsim.cloudlets.Cloudlet;
+import org.cloudbus.cloudsim.cloudlets.CloudletSimple;
 import org.cloudbus.cloudsim.core.CloudSim;
+import org.cloudbus.cloudsim.core.CloudSimTags;
+import org.cloudbus.cloudsim.core.events.SimEvent;
+import org.cloudbus.cloudsim.datacenters.Datacenter;
 import org.cloudbus.cloudsim.vms.Vm;
+import org.cloudbus.cloudsim.vms.VmSimple;
+
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
 
 /**
  * Fixed version of the original class - uses list of currently executable VMs
@@ -22,6 +31,75 @@ public class DatacenterBrokerFirstFitFixed extends DatacenterBrokerSimple {
      */
     public DatacenterBrokerFirstFitFixed(final CloudSim simulation) {
         super(simulation);
+    }
+
+    @Override
+    public void processEvent(SimEvent evt) {
+        super.processEvent(evt);
+
+        if(evt.getTag() == CloudSimTags.CLOUDLET_RETURN) {
+            final Cloudlet cloudlet = (Cloudlet) evt.getData();
+            LOGGER.debug("Cloudlet returned: " + cloudlet.getId() + "/" + cloudlet.getVm().getId() + " Scheduling more cloudlets...");
+            requestDatacentersToCreateWaitingCloudlets();
+        }
+
+        if(evt.getTag() == CloudSimTags.VM_CREATE_ACK) {
+            LOGGER.debug("Cleaning the vmCreatedList");
+            this.getVmCreatedList().clear();
+        }
+    }
+
+    @Override
+    protected void requestDatacentersToCreateWaitingCloudlets() {
+        final List<Cloudlet> scheduled = new LinkedList<>();
+        final List<Cloudlet> cloudletWaitingList = getCloudletWaitingList();
+        for (final Iterator<Cloudlet> it = cloudletWaitingList.iterator(); it.hasNext(); ) {
+            final CloudletSimple cloudlet = (CloudletSimple) it.next();
+            if (!cloudlet.getLastTriedDatacenter().equals(Datacenter.NULL)) {
+                continue;
+            }
+
+            //selects a VM for the given Cloudlet
+            Vm selectedVm = defaultVmMapper(cloudlet);
+            if (selectedVm == Vm.NULL) {
+                // all of our cloudlets use 1 PE. if there is no
+                // VMs to support that - there is no more capacity in the
+                // cluster - ergo, we can stop processing the list here
+                break;
+            }
+
+            ((VmSimple) selectedVm).removeExpectedFreePesNumber(cloudlet.getNumberOfPes());
+
+            cloudlet.setVm(selectedVm);
+            send(getDatacenter(selectedVm),
+                    cloudlet.getSubmissionDelay(), CloudSimTags.CLOUDLET_SUBMIT, cloudlet);
+            cloudlet.setLastTriedDatacenter(getDatacenter(selectedVm));
+            getCloudletCreatedList().add(cloudlet);
+            scheduled.add(cloudlet);
+            it.remove();
+        }
+
+        LOGGER.debug("requestDatacentersToCreateWaitingCloudlets scheduled: " + scheduled.size() + "/" + cloudletWaitingList.size());
+        LOGGER.debug("Events cnt before: " + getSimulation().getNumberOfFutureEvents(simEvent -> true));
+        for (Cloudlet cloudlet : scheduled) {
+            final long totalLengthInMips = cloudlet.getTotalLength();
+            final double peMips = cloudlet.getVm().getProcessor().getMips();
+            final double lengthInSeconds = totalLengthInMips / peMips;
+            final Datacenter datacenter = getDatacenter(cloudlet.getVm());
+            final double eventDelay = lengthInSeconds + 1.0;
+            
+            LOGGER.debug("Cloudlet " + cloudlet.getId() + " scheduled. Updating in: " + eventDelay);
+
+
+            this.getSimulation().send(
+                    datacenter,
+                    datacenter,
+                    eventDelay,
+                    CloudSimTags.VM_UPDATE_CLOUDLET_PROCESSING,
+                    ResubmitAnchor.THE_VALUE
+            );
+        }
+        LOGGER.debug("Events cnt after: " + getSimulation().getNumberOfFutureEvents(simEvent -> true));
     }
 
     /**
@@ -50,8 +128,8 @@ public class DatacenterBrokerFirstFitFixed extends DatacenterBrokerSimple {
             final Vm vm = getVmExecList().get(lastVmIndex);
             if (vm.getExpectedFreePesNumber() >= cloudlet.getNumberOfPes()) {
                 LOGGER.trace("{}: {}: {} (PEs: {}) mapped to {} (available PEs: {}, tot PEs: {})",
-                    getSimulation().clockStr(), getName(), cloudlet, cloudlet.getNumberOfPes(), vm,
-                    vm.getExpectedFreePesNumber(), vm.getFreePesNumber());
+                        getSimulation().clockStr(), getName(), cloudlet, cloudlet.getNumberOfPes(), vm,
+                        vm.getExpectedFreePesNumber(), vm.getFreePesNumber());
                 return vm;
             }
 

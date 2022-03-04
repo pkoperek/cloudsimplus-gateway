@@ -71,16 +71,19 @@ public class WrappedSimulation {
 
     public ResetResult reset() {
         info("Reset initiated");
-        List<Cloudlet> cloudlets = initialJobsDescriptors
-                .stream()
-                .map(cloudletDescriptor -> cloudletDescriptor.toCloudlet())
-                .collect(Collectors.toList());
-        cloudSimProxy = new CloudSimProxy(settings, initialVmsCount, cloudlets, simulationSpeedUp);
+
+        // first attempt to store some memory
         metricsStorage.clear();
         this.vmCounter = new VmCounter(this.settings.getMaxVmsPerSize());
         this.vmCounter.initializeCapacity(CloudSimProxy.SMALL, initialVmsCount.get(CloudSimProxy.SMALL));
         this.vmCounter.initializeCapacity(CloudSimProxy.MEDIUM, initialVmsCount.get(CloudSimProxy.MEDIUM));
         this.vmCounter.initializeCapacity(CloudSimProxy.LARGE, initialVmsCount.get(CloudSimProxy.LARGE));
+
+        List<Cloudlet> cloudlets = initialJobsDescriptors
+                .stream()
+                .map(CloudletDescriptor::toCloudlet)
+                .collect(Collectors.toList());
+        cloudSimProxy = new CloudSimProxy(settings, initialVmsCount, cloudlets, simulationSpeedUp);
 
         double[] obs = getObservation();
         return new ResetResult(obs);
@@ -109,7 +112,7 @@ public class WrappedSimulation {
             throw new RuntimeException("Simulation not reset! Please call the reset() function!");
         }
 
-        debug("Executing action: " + action);
+        info("Executing action: " + action);
 
         long startAction = System.nanoTime();
         executeAction(action);
@@ -138,7 +141,7 @@ public class WrappedSimulation {
 
         double metricsTime = (stopMetrics - startMetrics) / 1_000_000_000d;
         double actionTime = (stopAction - startAction) / 1_000_000_000d;
-        debug("Step finished (action: " + action + ") is done: " + done +
+        info("Step finished (action: " + action + ") is done: " + done +
                 " Length of future events queue: " + cloudSimProxy.getNumberOfFutureEvents() +
                 " Metrics (s): " + metricsTime +
                 " Action (s): " + actionTime);

@@ -11,7 +11,6 @@ public class VmCost {
     private final double perIterationSmallVMCost;
     private final double speedUp;
     private List<Vm> createdVms = new ArrayList<>();
-    private List<Vm> removedVms = new ArrayList<>();
 
     private boolean payForFullHour;
     private double iterationsInHour;
@@ -50,7 +49,7 @@ public class VmCost {
                         toRemove.add(vm);
                     }
                 } else {
-                    // vm still running - just
+                    // vm still running - just add the cost
                     totalCost += perIterationVMCost;
                 }
             } else {
@@ -58,7 +57,6 @@ public class VmCost {
                 totalCost += perIterationVMCost;
             }
         }
-        removedVms.addAll(toRemove);
         createdVms.removeAll(toRemove);
         return totalCost;
     }
