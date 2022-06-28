@@ -6,7 +6,7 @@ import org.cloudbus.cloudsim.brokers.DatacenterBrokerSimple;
 import org.cloudbus.cloudsim.cloudlets.Cloudlet;
 import org.cloudbus.cloudsim.cloudlets.CloudletExecution;
 import org.cloudbus.cloudsim.core.CloudSim;
-import org.cloudbus.cloudsim.core.CloudSimTags;
+import org.cloudbus.cloudsim.core.CloudSimTag;
 import org.cloudbus.cloudsim.core.events.SimEvent;
 import org.cloudbus.cloudsim.datacenters.Datacenter;
 import org.cloudbus.cloudsim.datacenters.DatacenterSimple;
@@ -16,6 +16,7 @@ import org.cloudbus.cloudsim.provisioners.PeProvisionerSimple;
 import org.cloudbus.cloudsim.provisioners.ResourceProvisionerSimple;
 import org.cloudbus.cloudsim.resources.Pe;
 import org.cloudbus.cloudsim.resources.PeSimple;
+import org.cloudbus.cloudsim.schedulers.MipsShare;
 import org.cloudbus.cloudsim.schedulers.cloudlet.CloudletSchedulerSpaceShared;
 import org.cloudbus.cloudsim.schedulers.vm.VmSchedulerTimeShared;
 import org.cloudbus.cloudsim.vms.Vm;
@@ -98,7 +99,7 @@ public class CloudSimProxy {
                         datacenter,
                         datacenter,
                         c.getSubmissionDelay() + 1.0,
-                        CloudSimTags.VM_UPDATE_CLOUDLET_PROCESSING,
+                        CloudSimTag.VM_UPDATE_CLOUDLET_PROCESSING,
                         ResubmitAnchor.THE_VALUE
                 )
         );
@@ -297,7 +298,7 @@ public class CloudSimProxy {
                 public boolean test(SimEvent current) {
                     // remove dupes
                     if (previous != null &&
-                            current.getTag() == CloudSimTags.VM_UPDATE_CLOUDLET_PROCESSING &&
+                            current.getTag() == CloudSimTag.VM_UPDATE_CLOUDLET_PROCESSING &&
                             current.getSource() == datacenter &&
                             current.getDestination() == datacenter &&
                             previous.getTime() == current.getTime() &&
@@ -487,7 +488,7 @@ public class CloudSimProxy {
 
     class CloudletScheduler extends CloudletSchedulerSpaceShared {
         @Override
-        public double updateProcessing(double currentTime, List<Double> mipsShare) {
+        public double updateProcessing(double currentTime, MipsShare mipsShare) {
             final int sizeBefore = this.getCloudletWaitingList().size();
             final double nextSimulationTime = super.updateProcessing(currentTime, mipsShare);
             final int sizeAfter = this.getCloudletWaitingList().size();
