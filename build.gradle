@@ -7,16 +7,12 @@
  */
 
 // Apply the java plugin to add support for Java
-apply plugin: 'java'
-apply plugin: 'application'
-apply plugin: 'idea'
-apply plugin: 'com.bmuschko.docker-java-application'
-
-buildscript {
-    repositories { gradlePluginPortal() }
-    dependencies {
-        classpath 'com.bmuschko:gradle-docker-plugin:4.10.0'
-    }
+plugins {
+  id 'java'
+  id 'application'
+  id 'idea'
+  id 'com.github.johnrengelman.shadow' version '7.0+'
+  id 'com.bmuschko.docker-java-application' version '9.3.2'
 }
 
 // In this section you declare where to find the dependencies of your project
@@ -28,33 +24,33 @@ repositories {
     jcenter()
 }
 
-sourceCompatibility = 1.8
-targetCompatibility = 1.8
-def dockerImageTag = 'pkoperek/cloudsimplus-gateway:1.8.10'
+sourceCompatibility = 1.17
+targetCompatibility = 1.17
+def dockerImageTag = 'pkoperek/cloudsimplus-gateway:1.9.1'
 
 // In this section you declare the dependencies for your production and test code
 dependencies {
     // The production code uses the SLF4J logging API at compile time
-    compile 'org.slf4j:slf4j-api:1.7.36'
-    compile 'org.cloudsimplus:cloudsim-plus:5.0.4'
-    compile group: 'net.sf.py4j', name: 'py4j', version: '0.10.7'
-    compile group: "ch.qos.logback", name: "logback-classic", version: "1.2.3"
-    compile group: 'org.apache.commons', name: 'commons-collections4', version: '4.0'
-    compile 'com.google.code.gson:gson:2.8.5'
-    compile group: 'org.postgresql', name: 'postgresql', version: '42.2.5'
-    compile group: 'org.hamcrest', name: 'hamcrest', version: '2.2'
+    implementation 'org.slf4j:slf4j-api:1.7.36'
+    implementation 'org.cloudsimplus:cloudsim-plus:5.0.4'
+    implementation group: 'net.sf.py4j', name: 'py4j', version: '0.10.7'
+    implementation group: "ch.qos.logback", name: "logback-classic", version: "1.2.3"
+    implementation group: 'org.apache.commons', name: 'commons-collections4', version: '4.0'
+    implementation 'com.google.code.gson:gson:2.8.5'
+    implementation group: 'org.postgresql', name: 'postgresql', version: '42.2.5'
+    implementation group: 'org.hamcrest', name: 'hamcrest', version: '2.2'
 
-    testCompile 'junit:junit:4.12'
-    testCompile 'com.github.stefanbirkner:system-lambda:1.2.0'
+    testImplementation 'junit:junit:4.12'
+    testImplementation 'com.github.stefanbirkner:system-lambda:1.2.0'
 }
 
 docker {
     url = 'unix:///var/run/docker.sock'
     javaApplication {
-        baseImage = 'openjdk:11-jre'
+        baseImage = 'amazoncorretto:17-alpine-jdk'
         maintainer = 'Pawel Koperek "pkoperek@gmail.com"'
         ports = [25333]
-        tag = dockerImageTag
+        images = [dockerImageTag]
         jvmArgs = ['-Xms1G', '-Xmx4G']
     }
 }
