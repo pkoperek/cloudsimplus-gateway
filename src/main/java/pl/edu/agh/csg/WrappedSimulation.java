@@ -112,7 +112,7 @@ public class WrappedSimulation {
             throw new RuntimeException("Simulation not reset! Please call the reset() function!");
         }
 
-        info("Executing action: " + action);
+        debug("Executing action: " + action);
 
         long startAction = System.nanoTime();
         executeAction(action);
@@ -141,7 +141,7 @@ public class WrappedSimulation {
 
         double metricsTime = (stopMetrics - startMetrics) / 1_000_000_000d;
         double actionTime = (stopAction - startAction) / 1_000_000_000d;
-        info("Step finished (action: " + action + ") is done: " + done +
+        debug("Step finished (action: " + action + ") is done: " + done +
                 " Length of future events queue: " + cloudSimProxy.getNumberOfFutureEvents() +
                 " Metrics (s): " + metricsTime +
                 " Action (s): " + actionTime);
@@ -185,7 +185,7 @@ public class WrappedSimulation {
         if (cloudSimProxy.removeRandomlyVM(type)) {
             this.vmCounter.recordRemovedVM(type);
         } else {
-            logger.info("Removing a VM of type "
+            debug("Removing a VM of type "
                     + type + " requested but the request was ignored. Stats: "
                     + " S: " + this.vmCounter.getStartedVms(CloudSimProxy.SMALL)
                     + " M: " + this.vmCounter.getStartedVms(CloudSimProxy.MEDIUM)
@@ -199,7 +199,7 @@ public class WrappedSimulation {
             cloudSimProxy.addNewVM(type);
             vmCounter.recordNewVM(type);
         } else {
-            logger.info("Adding a VM of type "
+            debug("Adding a VM of type "
                     + type
                     + " requested but the request was ignored (MAX_VMS_PER_SIZE "
                     + this.settings.getMaxVmsPerSize() + " reached) Stats: "
