@@ -71,6 +71,11 @@ public class MultiSimulationEnvironment {
         return simulation.clock();
     }
 
+    public void shutdown() {
+        logger.info("Shutting down as per users request");
+        System.exit(0);
+    }
+
     WrappedSimulation retrieveValidSimulation(String simulationIdentifier) {
         validateIdentifier(simulationIdentifier);
 
